@@ -1,0 +1,2679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APPLE ][ → CODE · Complete Applesoft Converter v5.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#33ff33;--green-dim:#1a8a1a;--green-dark:#0a2e0a;--green-darker:#051505;
+  --amber:#ffb000;--amber-dim:#8a5f00;
+  --bg:#000;--scan:rgba(51,255,51,0.03);
+}
+html,body{height:100%;background:var(--bg);color:var(--green);font-family:"Courier New",ui-monospace,monospace;}
+body{background:
+  radial-gradient(ellipse at center, rgba(51,255,51,0.08) 0%, transparent 70%),
+  linear-gradient(180deg, #000 0%, #020602 100%);
+  min-height:100vh; overflow-x:hidden;
+  line-height:1.5;
+  position:relative;
+}
+/* CRT scanlines */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(0deg, transparent 0px, transparent 2px, var(--scan) 2px, var(--scan) 4px);
+}
+/* Flicker */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:2;
+  background:rgba(51,255,51,0.01);animation:flicker 0.15s infinite;
+}
+@keyframes flicker{0%{opacity:0.7;}50%{opacity:1;}100%{opacity:0.7;}}
+
+.container{max-width:900px;margin:0 auto;padding:24px 16px;position:relative;z-index:3;}
+
+header{text-align:center;padding:40px 0 32px;border-bottom:1px solid var(--green-dim);margin-bottom:32px;}
+h1{font-size:clamp(28px,6vw,48px);letter-spacing:8px;font-weight:400;text-shadow:0 0 20px var(--green);margin-bottom:12px;}
+h1 .arrow{color:var(--amber);text-shadow:0 0 20px var(--amber);margin:0 8px;}
+.tagline{color:var(--green-dim);letter-spacing:4px;font-size:12px;}
+.cursor{display:inline-block;width:10px;height:16px;background:var(--green);animation:blink 1s step-end infinite;vertical-align:text-top;margin-left:4px;}
+@keyframes blink{50%{opacity:0;}}
+
+.section{margin-bottom:28px;}
+.section-title{color:var(--green-dim);font-size:11px;letter-spacing:3px;margin-bottom:10px;}
+.section-title::before{content:"▸ ";color:var(--green);}
+
+.btn-group{display:flex;gap:12px;flex-wrap:wrap;}
+.btn{background:transparent;border:1px solid var(--green-dim);color:var(--green-dim);padding:12px 20px;
+  font-family:inherit;font-size:13px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;
+  flex:1;min-width:140px;text-align:center;}
+.btn:hover{border-color:var(--green);color:var(--green);box-shadow:inset 0 0 20px rgba(51,255,51,0.15);}
+.btn.btn-active{border-color:var(--green);color:var(--green);background:rgba(51,255,51,0.08);
+  box-shadow:inset 0 0 20px rgba(51,255,51,0.15),0 0 10px rgba(51,255,51,0.3);}
+.btn.btn-js.btn-active{border-color:var(--amber);color:var(--amber);background:rgba(255,176,0,0.08);
+  box-shadow:inset 0 0 20px rgba(255,176,0,0.15),0 0 10px rgba(255,176,0,0.3);}
+
+.btn-d{background:transparent;border:1px solid var(--green-dim);color:var(--green-dim);
+  padding:8px 14px;font-family:inherit;font-size:11px;letter-spacing:1px;cursor:pointer;
+  transition:all 0.15s;}
+.btn-d:hover{border-color:var(--green);color:var(--green);}
+.btn-d.btn-active{border-color:var(--green);color:var(--green);background:rgba(51,255,51,0.08);}
+
+.dialect-group{display:flex;gap:8px;flex-wrap:wrap;}
+
+.io-panel{border:1px solid var(--green-dim);background:rgba(10,46,10,0.2);padding:16px;margin-bottom:16px;}
+.io-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;
+  padding-bottom:8px;border-bottom:1px dashed var(--green-dim);}
+.io-label{color:var(--green);font-size:11px;letter-spacing:2px;}
+.dot{width:8px;height:8px;background:var(--green);border-radius:50%;
+  box-shadow:0 0 8px var(--green);display:inline-block;vertical-align:middle;margin-right:6px;}
+.dot-js{background:var(--amber);box-shadow:0 0 8px var(--amber);}
+.line-count{color:var(--green-dim);font-size:11px;letter-spacing:1px;}
+
+textarea#input{width:100%;min-height:200px;background:#000;border:1px solid var(--green-dim);
+  color:var(--green);font-family:inherit;font-size:13px;padding:12px;resize:vertical;outline:none;
+  line-height:1.6;letter-spacing:0.5px;}
+textarea#input:focus{border-color:var(--green);box-shadow:inset 0 0 20px rgba(51,255,51,0.1);}
+
+pre#output{background:#000;border:1px solid var(--green-dim);min-height:200px;max-height:500px;
+  overflow:auto;padding:12px;color:var(--green);font-family:inherit;font-size:12px;
+  white-space:pre-wrap;word-break:break-all;line-height:1.5;}
+pre#output.err{color:#ff3333;border-color:#ff3333;}
+pre#output:empty::before{content:"-- awaiting input --";color:var(--green-dim);font-style:italic;}
+
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.actions .btn-s{flex:0 1 auto;padding:10px 18px;font-size:12px;min-width:auto;}
+
+.warns{color:var(--amber);background:rgba(255,176,0,0.08);border:1px solid var(--amber-dim);
+  padding:10px;margin-top:12px;font-size:11px;white-space:pre-wrap;max-height:200px;overflow:auto;}
+
+#exlist{display:flex;flex-wrap:wrap;gap:6px;}
+#exlist button{background:transparent;border:1px solid var(--green-dim);color:var(--green-dim);
+  padding:5px 10px;font-family:inherit;font-size:10px;cursor:pointer;letter-spacing:1px;}
+#exlist button:hover{color:var(--green);border-color:var(--green);}
+
+#statusLine{color:var(--green);letter-spacing:2px;font-size:11px;text-align:center;
+  padding:16px 0;border-top:1px solid var(--green-dim);margin-top:32px;}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+  background:var(--green);color:#000;padding:10px 22px;font-weight:bold;letter-spacing:2px;
+  opacity:0;transition:opacity 0.3s;z-index:100;font-size:12px;}
+.toast.show{opacity:1;}
+
+.panel-divider{height:1px;background:linear-gradient(90deg,transparent,var(--green-dim),transparent);
+  margin:24px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+<h1>APPLE ][<span class="arrow">→</span>CODE</h1>
+<div class="tagline">COMPLETE APPLESOFT CONVERTER v5.0<span class="cursor"></span></div>
+</header>
+
+<div class="section">
+<div class="section-title">OUTPUT TARGET</div>
+<div class="btn-group">
+<button class="btn btn-s btn-active" id="btnPy" onclick="setTarget('python')">🐍 PYTHON 3</button>
+<button class="btn btn-js" id="btnHtml" onclick="setTarget('html')">🌐 HTML / JS</button>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">SOURCE DIALECT</div>
+<div class="dialect-group">
+<button class="btn-d btn-active" id="dApple" onclick="setDialect('apple')">APPLESOFT</button>
+<button class="btn-d" id="dGW" onclick="setDialect('gw')">GW-BASIC</button>
+<button class="btn-d" id="dC64" onclick="setDialect('c64')">COMMODORE 64</button>
+<button class="btn-d" id="dBBC" onclick="setDialect('bbc')">BBC BASIC</button>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">EXAMPLES</div>
+<div id="exlist"></div>
+</div>
+
+<div class="io-panel">
+<div class="io-header"><div class="io-label" id="inputLabel">APPLESOFT BASIC INPUT</div></div>
+<textarea id="input" spellcheck="false" autocomplete="off" autocorrect="off" placeholder="10 PRINT &quot;HELLO, WORLD!&quot;
+20 FOR I = 1 TO 10
+30 PRINT I
+40 NEXT I
+50 END"></textarea>
+<div class="actions">
+<button class="btn btn-s" id="btnConvert" onclick="doConvert()">▶ CONVERT</button>
+<button class="btn btn-s" onclick="doClear()">CLR</button>
+</div>
+</div>
+
+<div class="io-panel" id="outputPanel">
+<div class="io-header">
+<div class="io-label"><span class="dot" id="outDot"></span><span id="outLabel">PYTHON 3 OUTPUT</span></div>
+<div class="line-count" id="lineCount"></div>
+</div>
+<pre id="output"></pre>
+<div id="warns" class="warns" style="display:none;"></div>
+<div class="actions">
+<button class="btn btn-s" id="btnCopy" onclick="copyOutput()" disabled>COPY</button>
+<button class="btn btn-s" id="btnPreview" onclick="previewHTML()" style="display:none;">PREVIEW HTML</button>
+</div>
+</div>
+
+<div id="statusLine">APPLESOFT → PYTHON 3 · READY</div>
+
+</div>
+
+<div class="toast" id="toast">COPIED TO CLIPBOARD</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+var _target  = 'python';
+var _dialect = 'apple';
+var _output  = '';
+var _toastTimer = null;
+
+// ═══════════════════════════════════════════════════════════
+// EXAMPLES
+// ═══════════════════════════════════════════════════════════
+var EXAMPLES = {
+  apple: [
+    {name:'Hello World', code:'10 PRINT "HELLO, WORLD!"\n20 END'},
+    {name:'FOR/NEXT', code:'10 FOR I = 10 TO 1 STEP -1\n20   PRINT I; " BOTTLES"\n30 NEXT I\n40 PRINT "DONE"\n50 END'},
+    {name:'ON GOTO', code:'10 PRINT "ENTER 1, 2 OR 3:"\n20 INPUT X\n30 ON X GOTO 100,200,300\n40 PRINT "INVALID": GOTO 10\n100 PRINT "ONE": GOTO 400\n200 PRINT "TWO": GOTO 400\n300 PRINT "THREE"\n400 END'},
+    {name:'DEF FN', code:'10 DEF FN SQ(X) = X * X\n20 FOR I = 1 TO 5\n30   PRINT I; " SQ="; FN SQ(I)\n40 NEXT I\n50 END'},
+    {name:'DATA/READ', code:'10 FOR I = 1 TO 3\n20   READ N$, S\n30   PRINT N$; " SCORED "; S\n40 NEXT I\n50 END\n100 DATA "ALICE",95,"BOB",87,"CAROL",91'},
+    {name:'DOS File I/O', code:'10 PRINT CHR$(4);"OPEN SCORES"\n20 PRINT CHR$(4);"READ SCORES"\n30 INPUT N$\n40 INPUT S\n50 PRINT CHR$(4);"CLOSE"\n60 PRINT "NAME: "; N$; " SCORE: "; S\n70 END'},
+    {name:'ONERR/RESUME', code:'10 ONERR GOTO 900\n20 DIM A(5)\n30 FOR I = 1 TO 8\n40   A(I) = I * 2\n50 NEXT I\n60 END\n900 PRINT "ERROR CAUGHT"\n910 RESUME NEXT'},
+    {name:'CALL Examples', code:'10 CALL -936\n20 PRINT "SCREEN CLEARED"\n30 CALL -868\n40 PRINT "LINE CLEARED"\n50 POKE -16336,0\n60 PRINT "BEEP!"\n70 CALL 62450\n80 END'},
+    {name:'Lo-Res GFX', code:'10 GR\n20 FOR C = 0 TO 15\n30   COLOR = C\n40   VLIN 0,39 AT C*2\n50   VLIN 0,39 AT C*2+1\n60 NEXT C\n70 END'},
+    {name:'Hi-Res GFX', code:'10 HGR\n20 HCOLOR = 3\n30 FOR I = 0 TO 90 STEP 3\n40   HPLOT 139,95 TO INT(139+100*COS(I*.0349)),INT(95-100*SIN(I*.0349))\n50 NEXT I\n60 END'},
+    {name:'Starfield', code:'10 HGR\n20 HCOLOR = 7\n30 FOR I = 1 TO 200\n40   X = INT(RND(1)*280)\n50   Y = INT(RND(1)*192)\n60   HPLOT X,Y\n70 NEXT I\n80 HCOLOR = 3\n90 FOR A = 0 TO 360 STEP 5\n100   X = 139+INT(80*COS(A*3.14159/180))\n110   Y = 95+INT(60*SIN(A*3.14159/180))\n120   HPLOT 139,95 TO X,Y\n130 NEXT A\n140 END'},
+    {name:'DRAW Shapes', code:'10 DIM SHAPE(20)\n20 REM TRIANGLE SHAPE TABLE IN POKES\n30 FOR I=0 TO 10\n40   POKE 768+I, I*10\n50 NEXT I\n60 HGR\n70 HCOLOR=3\n80 DRAW 1 AT 100,80\n90 XDRAW 1 AT 150,80\n100 END'},
+    {name:'Keyboard PEEK', code:'10 PRINT "PRESS A KEY (ESC TO QUIT)"\n20 K = PEEK(-16384)\n30 IF K < 128 THEN GOTO 20\n40 POKE -16368, 0\n50 K = K - 128\n60 IF K = 27 THEN END\n70 PRINT CHR$(K)\n80 GOTO 20'},
+    {name:'Guess Number', code:'10 LET X = INT(RND(1)*100)+1\n20 PRINT "GUESS 1-100:"\n30 INPUT G\n40 IF G = X THEN GOTO 80\n50 IF G < X THEN PRINT "TOO LOW"\n60 IF G > X THEN PRINT "TOO HIGH"\n70 GOTO 30\n80 PRINT "CORRECT! IT WAS "; X\n90 END'}
+  ],
+  gw: [
+    {name:'Hello World', code:'10 PRINT "HELLO, WORLD!"\n20 END'},
+    {name:'LOCATE + COLOR', code:'10 CLS\n20 LOCATE 5,10\n30 COLOR 14,1\n40 PRINT "GW-BASIC DEMO"\n50 COLOR 7,0\n60 LOCATE 10,1\n70 PRINT "NORMAL TEXT"\n80 END'},
+    {name:'LINE Graphics', code:'10 SCREEN 1\n20 LINE (0,0)-(319,199),3\n30 LINE (160,0)-(0,199),2\n40 LINE (160,0)-(319,199),1\n50 CIRCLE (160,100),50,3\n60 PSET (160,100),2\n70 END'},
+    {name:'INKEY$ Loop', code:'10 PRINT "PRESS Q TO QUIT"\n20 K$ = INKEY$\n30 IF K$ = "" THEN GOTO 20\n40 IF K$ = "Q" OR K$ = "q" THEN END\n50 PRINT "KEY: "; K$\n60 GOTO 20'},
+    {name:'File I/O', code:'10 OPEN "DATA.TXT" FOR OUTPUT AS #1\n20 PRINT #1, "ALICE",95\n30 PRINT #1, "BOB",87\n40 CLOSE #1\n50 OPEN "DATA.TXT" FOR INPUT AS #1\n60 INPUT #1, N$, S\n70 PRINT N$; " "; S\n80 CLOSE #1\n90 END'},
+    {name:'PLAY Music', code:'10 PLAY "T120 L4 CDEFGAB"\n20 PLAY "O3 L8 CDECCDECEFGEFG"\n30 END'}
+  ],
+  c64: [
+    {name:'Hello World', code:'10 PRINT "HELLO, WORLD!"\n20 END'},
+    {name:'POKE Colors', code:'10 POKE 53280,0\n20 POKE 53281,0\n30 PRINT CHR$(147)\n40 FOR I = 1 TO 16\n50   POKE 646, I-1\n60   PRINT "COLOR"; I\n70 NEXT I\n80 END'},
+    {name:'SYS + PEEK', code:'10 PRINT "MEMORY TEST"\n20 FOR A = 49152 TO 49162\n30   POKE A, 0\n40   PRINT PEEK(A);\n50 NEXT A\n60 END'},
+    {name:'Sprite Demo', code:'10 REM COMMODORE 64 SPRITE SETUP\n20 POKE 2040,192\n30 FOR I=0 TO 62\n40   POKE 12288+I,255\n50 NEXT I\n60 POKE 53248,100\n70 POKE 53249,100\n80 POKE 53269,1\n90 END'}
+  ],
+  bbc: [
+    {name:'Hello World', code:'10 PRINT "HELLO, WORLD!"\n20 END'},
+    {name:'PROC Demo', code:'10 CALL ShowTitle\n20 FOR I = 1 TO 5\n30   CALL PrintNum(I)\n40 NEXT I\n50 END\n100 DEF PROC ShowTitle\n110   PRINT "BBC BASIC DEMO"\n120 ENDPROC\n200 DEF PROC PrintNum(N)\n210   PRINT "NUMBER: "; N\n220 ENDPROC'},
+    {name:'MODE Graphics', code:'10 MODE 4\n20 MOVE 0,0\n30 DRAW 1279,0\n40 DRAW 1279,1023\n50 DRAW 0,1023\n60 DRAW 0,0\n70 FOR I = 0 TO 500 STEP 10\n80   MOVE 640,512\n90   DRAW 640+I,512-I\n100 NEXT I\n110 END'},
+    {name:'VDU Commands', code:'10 VDU 26\n20 VDU 28,0,24,39,0\n30 CLS\n40 PRINT TAB(10,5); "BBC MICRO"\n50 COLOUR 1\n60 PRINT TAB(10,10); "RED TEXT"\n70 COLOUR 7\n80 END'}
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════════
+function setTarget(t) {
+  _target = t;
+  document.getElementById('btnPy').className   = 'btn btn-s' + (t==='python'?' btn-active':'');
+  document.getElementById('btnHtml').className = 'btn btn-js' + (t==='html'?' btn-active':'');
+  document.getElementById('outLabel').textContent = t==='html' ? 'HTML / JAVASCRIPT OUTPUT' : 'PYTHON 3 OUTPUT';
+  document.getElementById('outDot').className  = 'dot' + (t==='html'?' dot-js':'');
+  updateStatus(); clearOutput();
+}
+
+function setDialect(d) {
+  _dialect = d;
+  var names = {apple:'APPLESOFT',gw:'GW-BASIC',c64:'COMMODORE 64',bbc:'BBC BASIC'};
+  ['apple','gw','c64','bbc'].forEach(function(id) {
+    document.getElementById('d'+id.charAt(0).toUpperCase()+id.slice(1)).className = 'btn-d' + (id===d?' btn-active':'');
+  });
+  // fix IDs
+  document.getElementById('dApple').className = 'btn-d' + (d==='apple'?' btn-active':'');
+  document.getElementById('dGW').className    = 'btn-d' + (d==='gw'   ?' btn-active':'');
+  document.getElementById('dC64').className   = 'btn-d' + (d==='c64'  ?' btn-active':'');
+  document.getElementById('dBBC').className   = 'btn-d' + (d==='bbc'  ?' btn-active':'');
+  document.getElementById('inputLabel').textContent = 'BASIC INPUT';
+  buildExamples(); updateStatus(); clearOutput();
+}
+
+function updateStatus() {
+  var dNames = {apple:'APPLESOFT',gw:'GW-BASIC',c64:'C64 BASIC',bbc:'BBC BASIC'};
+  var tName  = _target==='html' ? 'HTML/JS' : 'PYTHON 3';
+  document.getElementById('statusLine').textContent = dNames[_dialect] + ' \u2192 ' + tName;
+}
+
+var PLACEHOLDER_PY   = '# ── SUPPORTED COMMANDS ──────────────────\n# PRINT ? INPUT GET READ DATA RESTORE\n# FOR/NEXT/STEP GOTO GOSUB RETURN\n# ON..GOTO ON..GOSUB IF/THEN/ELSE\n# DEF FN DIM ONERR RESUME END STOP\n# GR HGR HGR2 COLOR= HCOLOR=\n# PLOT VLIN HLIN HPLOT..TO\n# DRAW/XDRAW AT (shape table decoder)\n# CALL (ROM lookup: -936 -868 -922 etc)\n# PEEK(-16384) keyboard non-blocking\n# POKE -16336 speaker click -> sound\n# CHR$(4);"OPEN/READ/WRITE" DOS files\n# GW-BASIC: LOCATE LINE CIRCLE PSET\n#           INKEY$ COLOR SCREEN PLAY\n# C64: POKE SYS colors sprites\n# BBC: MODE MOVE DRAW PROC VDU';
+var PLACEHOLDER_HTML = '<!-- SUPPORTED: all Applesoft + GW-BASIC\n     + C64 BASIC + BBC BASIC\n     Self-contained runnable HTML output\n     with Apple ][ terminal + canvas\n     graphics, async INPUT, sound -->';
+
+function clearOutput() {
+  _output = '';
+  var el = document.getElementById('output');
+  el.className = 'empty';
+  el.textContent = _target==='html' ? PLACEHOLDER_HTML : PLACEHOLDER_PY;
+  document.getElementById('lineCount').textContent = '';
+  document.getElementById('btnCopy').disabled = true;
+  document.getElementById('btnPreview').style.display = 'none';
+  var w = document.getElementById('warns'); w.style.display='none'; w.textContent='';
+}
+
+function doClear() { document.getElementById('input').value = ''; clearOutput(); }
+
+function setOutput(code, warnings, isErr) {
+  _output = code;
+  var el = document.getElementById('output');
+  el.className = isErr ? 'err' : '';
+  el.textContent = code;
+  document.getElementById('lineCount').textContent = code.split('\n').length + ' LINES';
+  document.getElementById('btnCopy').disabled = false;
+  if (!isErr && _target==='html') document.getElementById('btnPreview').style.display = '';
+  if (warnings && warnings.length) {
+    var w = document.getElementById('warns');
+    w.textContent = '\u26a0  ' + warnings.join('\n\u26a0  ');
+    w.style.display = '';
+  }
+  document.getElementById('outputPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function copyOutput() {
+  if (!_output) return;
+  navigator.clipboard.writeText(_output).then(function() {
+    var t = document.getElementById('toast'); t.classList.add('show');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function(){t.classList.remove('show');}, 1600);
+  });
+}
+
+function previewHTML() {
+  if (!_output || _target!=='html') return;
+  window.open(URL.createObjectURL(new Blob([_output],{type:'text/html'})),'_blank');
+}
+
+function detectDialect(code) {
+  var u = code.toUpperCase();
+  var scores = {apple:0, gw:0, c64:0, bbc:0};
+  // Applesoft signatures
+  if(/\bHGR\b|\bHGR2\b|\bHPLOT\b|\bHCOLOR\s*=/.test(u)) scores.apple += 3;
+  if(/\bGR\b\s*(?::|\n|$)|\bCOLOR\s*=/.test(u)) scores.apple += 2;
+  if(/\bCALL\s+-?\d+/.test(u)) scores.apple += 3;
+  if(/\bONERR\s+GOTO/.test(u)) scores.apple += 3;
+  if(/CHR\$\s*\(\s*4\s*\)/.test(u)) scores.apple += 3;
+  if(/\bVTAB\b|\bHTAB\b|\bVLIN\b|\bHLIN\b/.test(u)) scores.apple += 2;
+  if(/\bPOKE\s+-?16336\b|\bPEEK\s*\(\s*-?16384\b/.test(u)) scores.apple += 3;
+  if(/\bPDL\s*\(|\bSCRN\s*\(/.test(u)) scores.apple += 2;
+  if(/\bDRAW\s+\d+\s+AT\b|\bXDRAW\s+\d+\s+AT\b/.test(u)) scores.apple += 3;
+  // GW-BASIC signatures
+  if(/\bCLS\b/.test(u)) scores.gw += 2;
+  if(/\bLOCATE\s+\d+/.test(u)) scores.gw += 3;
+  if(/\bSCREEN\s+\d+/.test(u)) scores.gw += 3;
+  if(/\bKEY\s+(?:OFF|ON)\b/.test(u)) scores.gw += 3;
+  if(/\bLINE\s*\(/.test(u)) scores.gw += 3;
+  if(/\bPSET\s*\(/.test(u)) scores.gw += 2;
+  if(/\bINKEY\$/.test(u)) scores.gw += 2;
+  if(/\bINPUT\$\s*\(/.test(u)) scores.gw += 2;
+  if(/\bSTRING\$\s*\(/.test(u)) scores.gw += 2;
+  if(/\bON\s+ERROR\s+GOTO/.test(u)) scores.gw += 2;
+  if(/\bRANDOMIZE\b/.test(u)) scores.gw += 1;
+  if(/\bLINE\s+INPUT\b/.test(u)) scores.gw += 3;
+  // C64 signatures
+  if(/\bPOKE\s+5328[01]\b/.test(u)) scores.c64 += 4;  // VIC-II screen colors
+  if(/\bPOKE\s+532(4[8-9]|5\d|6\d|7\d)\b/.test(u)) scores.c64 += 3;  // sprites
+  if(/\bSYS\s+\d+/.test(u)) scores.c64 += 3;
+  if(/\bGET\s+[A-Z]\$/.test(u)) scores.c64 += 1;
+  if(/PRINT\s+CHR\$\s*\(\s*147\s*\)/.test(u)) scores.c64 += 4;  // clear screen
+  if(/\bPOKE\s+646\b/.test(u)) scores.c64 += 3;  // cursor color
+  if(/\bPOKE\s+2040\b/.test(u)) scores.c64 += 3;  // sprite pointer
+  // BBC BASIC signatures
+  if(/\bMODE\s+\d/.test(u)) scores.bbc += 4;
+  if(/\bVDU\b/.test(u)) scores.bbc += 3;
+  if(/\bDEF\s+PROC/.test(u)) scores.bbc += 4;
+  if(/\bENDPROC\b/.test(u)) scores.bbc += 4;
+  if(/\bPROC[A-Z]/.test(u)) scores.bbc += 2;
+  if(/\bGCOL\b/.test(u)) scores.bbc += 3;
+  if(/\bMOVE\s+\d+\s*,/.test(u)) scores.bbc += 2;
+  if(/\bDRAW\s+\d+\s*,\s*\d+/.test(u)) scores.bbc += 2;
+  // Pick highest
+  var best='apple', bestScore=0;
+  ['apple','gw','c64','bbc'].forEach(function(d){ if(scores[d]>bestScore){bestScore=scores[d]; best=d;} });
+  return {dialect: best, scores: scores, confident: bestScore>=3};
+}
+
+function doConvert() {
+  var code = document.getElementById('input').value;
+  if (!code.trim()) return;
+  var btn = document.getElementById('btnConvert');
+  btn.innerHTML = 'CONVERTING...'; btn.disabled = true;
+  var el = document.getElementById('output');
+  el.className='spin'; el.textContent='# CONVERTING...';
+  setTimeout(function() {
+    try {
+      var result;
+      // Auto-detect dialect
+      var detected = detectDialect(code);
+      var useDialect = _dialect;
+      var dialectWarning = null;
+      if (detected.confident && detected.dialect !== _dialect) {
+        useDialect = detected.dialect;
+        var names = {apple:'Applesoft', gw:'GW-BASIC', c64:'Commodore 64', bbc:'BBC BASIC'};
+        dialectWarning = 'Detected ' + names[detected.dialect] + ' but you selected ' + names[_dialect] + ' \u2014 using ' + names[detected.dialect] + ' instead';
+        // Update UI to reflect the detected dialect
+        setDialect(useDialect);
+      }
+      if (useDialect==='apple') result = _target==='html' ? convertToHTML(code) : convertToPython(code);
+      else result = _target==='html' ? convertAltToHTML(code,useDialect) : convertAltToPython(code,useDialect);
+      if (dialectWarning) result.warnings.unshift(dialectWarning);
+      setOutput(result.code, result.warnings, false);
+    } catch(e) {
+      setOutput('# Conversion error:\n# '+e.message, [], true);
+    }
+    btn.innerHTML='&#9654; CONVERT'; btn.disabled=false;
+  }, 30);
+}
+
+function buildExamples() {
+  var el = document.getElementById('exlist');
+  el.innerHTML = '';
+  var exs = EXAMPLES[_dialect] || EXAMPLES.apple;
+  exs.forEach(function(ex) {
+    var b = document.createElement('button');
+    b.className='exbtn'; b.textContent=ex.name;
+    b.onclick=function(){ document.getElementById('input').value=ex.code; clearOutput(); window.scrollTo({top:0,behavior:'smooth'}); };
+    el.appendChild(b);
+  });
+}
+
+(function init(){buildExamples();clearOutput();})();
+
+// ═══════════════════════════════════════════════════════════
+// SHARED PARSING HELPERS
+// ═══════════════════════════════════════════════════════════
+function splitColon(s) {
+  // Split on : but NOT inside strings, parens, or after THEN keyword
+  // (BASIC: everything after THEN is part of the IF, colon-stmts included)
+  var parts=[],cur='',inStr=false,depth=0;
+  var sUp=s.toUpperCase();
+  // Check if this is an IF...THEN line; if so, only split up to THEN
+  // Find THEN position (outside strings)
+  var thenPos=-1;
+  var ti=0,ts=false;
+  while(ti<s.length){
+    if(s[ti]==='"')ts=!ts;
+    if(!ts&&sUp.slice(ti).match(/^\sTHEN\s/)){thenPos=ti;break;}
+    ti++;
+  }
+  for(var i=0;i<s.length;i++){
+    var ch=s[i];
+    if(ch==='"')inStr=!inStr;
+    if(!inStr){if(ch==='('||ch==='[')depth++;if(ch===')'||ch===']')depth--;}
+    // Don't split after THEN position
+    if(!inStr&&depth===0&&ch===':'&&(thenPos<0||i<thenPos)){
+      parts.push(cur.trim());cur='';
+    } else cur+=ch;
+  }
+  if(cur.trim())parts.push(cur.trim());return parts;
+}
+function parseDataLine(rest) {
+  var items=[],cur='',inStr=false;
+  for(var i=0;i<rest.length;i++){var ch=rest[i];if(ch==='"'){inStr=!inStr;cur+=ch;continue;}if(!inStr&&ch===','){items.push(cur.trim());cur='';continue;}cur+=ch;}
+  if(cur.trim()!=='')items.push(cur.trim());return items;
+}
+function preprocessSource(code) {
+  // Split lines, expand IF/THEN bodies that contain GOSUB-followed-by-more-statements
+  // into multiple lines using synthetic decimal line numbers.
+  // Example:
+  //   60211 ...Q$=INPUT$(1):IF Q$="Q" THEN PRINT:PRINT "BYE":GOSUB 60890:SCREEN 0:CLS:RETURN
+  // Becomes:
+  //   60211 ...Q$=INPUT$(1):IF NOT(Q$="Q") THEN 60211.9
+  //   60211.1 PRINT
+  //   60211.2 PRINT "BYE"
+  //   60211.3 GOSUB 60890
+  //   60211.4 SCREEN 0
+  //   60211.5 CLS
+  //   60211.6 RETURN
+  //   60211.9 (next statements after IF, if any - usually the next numbered line handles)
+  // Actually since there's no ELSE part and the THEN body is the rest of the line,
+  // we can simply transform to: IF cond THEN GOTO <synthetic>; then synthetic lines.
+  // But BASIC doesn't support fractional line numbers natively; we use them internally
+  // in our switch-case dispatch (which DOES support non-integer keys via _line assignment).
+  
+  var lines = code.split(/\r?\n/);
+  var out = [];
+  for(var li=0; li<lines.length; li++){
+    var raw = lines[li];
+    var handled = false;
+    var m = raw.match(/^(\s*)(\d+)(\s+)(.*)$/);
+    if(!m){ out.push(raw); continue; }
+    var indent = m[1], lineNum = parseInt(m[2]), space = m[3], body = m[4];
+    
+    // Find IF...THEN position (case insensitive, not in strings)
+    var thenMatch = null;
+    var inStr = false;
+    for(var ci=0; ci<body.length-4; ci++){
+      if(body[ci]==='"'){inStr=!inStr; continue;}
+      if(inStr)continue;
+      if(body.slice(ci,ci+5).match(/^\s*IF\s/i)||
+         body.slice(ci).match(/^\s*IF\s/i)&&(ci===0||body[ci-1]===':')){
+        // Found IF at this position - look for THEN
+        var rest = body.slice(ci);
+        var ti = 0, ts = false;
+        for(; ti<rest.length-4; ti++){
+          if(rest[ti]==='"')ts=!ts;
+          if(!ts && rest.slice(ti).match(/^\s+THEN\s/i)){
+            // Check the THEN body
+            var thenStart = ti + rest.slice(ti).match(/^(\s+THEN\s+)/i)[1].length + ci;
+            var thenBody = body.slice(thenStart);
+            // Does THEN body contain GOSUB followed by more statements?
+            // Split thenBody by colons (string-aware), find GOSUB that isn't last
+            var tsplits = [];
+            var cur='', ss=false;
+            for(var ii=0; ii<thenBody.length; ii++){
+              if(thenBody[ii]==='"'){ss=!ss; cur+=thenBody[ii]; continue;}
+              if(!ss && thenBody[ii]===':'){tsplits.push(cur); cur=''; continue;}
+              cur += thenBody[ii];
+            }
+            if(cur) tsplits.push(cur);
+            // Look for GOSUB not at last position
+            var hasEmbeddedGosub = false;
+            for(var si=0; si<tsplits.length-1; si++){
+              if(/^\s*GOSUB\s+\d+\s*$/i.test(tsplits[si])){
+                hasEmbeddedGosub = true;
+                break;
+              }
+            }
+            if(hasEmbeddedGosub){
+              // Rewrite: keep everything before THEN, then add synthetic lines
+              var preThen = body.slice(0, thenStart - rest.slice(ti).match(/^(\s+THEN\s+)/i)[1].length).replace(/\s*$/,'');
+              // Extract IF condition
+              var ifM = body.slice(ci).match(/^(\s*IF\s+)([\s\S]+?)(\s+THEN\s+)/i);
+              if(ifM){
+                var preBody = body.slice(0,ci); // stuff before the IF
+                var condExpr = ifM[2];
+                // Skip target = the NEXT numbered line after this one
+                var nextNumMatch = null;
+                for(var nj=li+1; nj<lines.length; nj++){
+                  var nm = lines[nj].match(/^\s*(\d+)\s/);
+                  if(nm){ nextNumMatch = parseInt(nm[1]); break; }
+                }
+                var skipTarget = nextNumMatch!==null ? nextNumMatch : (lineNum + 1);
+                // Build synthetic lines
+                var synLines = [];
+                synLines.push(indent + lineNum + space + preBody + 'IF NOT(' + condExpr + ') THEN GOTO ' + skipTarget);
+                tsplits.forEach(function(stmt, si){
+                  var synNum = (lineNum + (si+1)*0.001).toFixed(3);
+                  synLines.push(indent + synNum + ' ' + stmt.trim());
+                });
+                synLines.forEach(function(l){ out.push(l); });
+                handled = true;
+                break;
+              }
+            }
+            break; // found THEN, don't keep looking
+          }
+        }
+        break; // found IF, don't keep looking for another IF on this line
+      }
+    }
+    if(!handled) out.push(raw);
+  }
+  return out.join('\n');
+}
+
+function parseNumbered(code) {
+  var numbered=[];
+  code.trim().split(/\r?\n/).forEach(function(raw){var m=raw.match(/^\s*([\d.]+)\s*(.*)/);if(m)numbered.push({num:parseFloat(m[1]),stmt:m[2].trim()});});
+  return numbered;
+}
+
+// ═══════════════════════════════════════════════════════════
+// APPLE II ROM CALL LOOKUP TABLE
+// Complete mapping of all common Applesoft ROM entry points
+// ═══════════════════════════════════════════════════════════
+var CALL_TABLE_PY = {
+  '-936':  "print('\\033[2J\\033[H',end='')  # CALL -936: clear screen",
+  '62464': "print('\\033[2J\\033[H',end='')  # CALL 62464: clear screen",
+  '-868':  "print('\\033[2K\\033[G',end='')  # CALL -868: clear to end of line",
+  '64668': "print('\\033[2K\\033[G',end='')  # CALL 64668: clear to end of line",
+  '-922':  "pass  # CALL -922: cursor home (use VTAB/HTAB instead)",
+  '64614': "pass  # CALL 64614: cursor home",
+  '62450': "_gr_text()  # CALL 62450: text mode",
+  '54915': "_gr_init('lo')  # CALL 54915: lo-res graphics",
+  '57350': "_gr_init('hi')  # CALL 57350: hi-res page 1",
+  '57352': "_gr_init('hi')  # CALL 57352: hi-res page 1 full",
+  '62454': "_gr_init('hi2') # CALL 62454: hi-res page 2",
+  '-151':  "pass  # CALL -151: enter monitor (not applicable)",
+  '65385': "pass  # CALL 65385: enter monitor",
+  '-1998': "pass  # CALL -1998: BASIC warm start",
+  '63538': "pass  # CALL 63538: BASIC warm start",
+  '976':   "_call_usr(976)  # CALL 976: user-defined",
+  '768':   "_call_usr(768)  # CALL 768: user-defined at $300"
+};
+
+var CALL_TABLE_JS = {
+  '-936':  "_home(); _grText();  // CALL -936: clear screen",
+  '62464': "_home(); _grText();  // clear screen",
+  '-868':  "// CALL -868: clear to end of line (approximated)",
+  '64668': "// CALL 64668: clear to end of line",
+  '-922':  "// CALL -922: cursor home",
+  '64614': "// cursor home",
+  '62450': "_grText();  // CALL 62450: text mode",
+  '54915': "_grInit('lo');  // CALL 54915: lo-res graphics",
+  '57350': "_grInit('hi');  // CALL 57350: hi-res page 1",
+  '57352': "_grInit('hi');  // CALL 57352: hi-res page 1 full",
+  '62454': "_grInit('hi2'); // CALL 62454: hi-res page 2",
+  '-151':  "// CALL -151: monitor (not applicable)",
+  '-1998': "// CALL -1998: BASIC warm start"
+};
+
+// ═══════════════════════════════════════════════════════════
+// PEEK/POKE HARDWARE LOOKUP
+// ═══════════════════════════════════════════════════════════
+// Addresses that need special treatment beyond _mem[]
+var PEEK_SPECIAL_PY = {
+  '-16384': '_kb_peek()',        // keyboard strobe read
+  '49152':  '_kb_peek()',
+  '-16368': '_kb_clear()',       // keyboard strobe clear (as value)
+  '49168':  '_kb_clear()',
+  '-16336': '0',                 // speaker toggle (reading it)
+  '49200':  '0',
+  '222':    '_mem.get(222,0)',   // ONERR error code
+  '218':    '_mem.get(218,0)',   // error line low byte
+  '219':    '_mem.get(219,0)'   // error line high byte
+};
+
+var POKE_SPECIAL_PY = {
+  '-16368': '_kb_clear()',       // clear keyboard strobe
+  '49168':  '_kb_clear()',
+  '-16336': '_speaker_click()', // click speaker
+  '49200':  '_speaker_click()'
+};
+
+var PEEK_SPECIAL_JS = {
+  '-16384': '_kbPeek()',
+  '49152':  '_kbPeek()',
+  '-16368': '_kbClear()',
+  '49168':  '_kbClear()',
+  '-16336': '0',
+  '49200':  '0'
+};
+
+var POKE_SPECIAL_JS = {
+  '-16368': '_kbClear();',
+  '49168':  '_kbClear();',
+  '-16336': '_speakerClick();',
+  '49200':  '_speakerClick();'
+};
+
+// ═══════════════════════════════════════════════════════════
+// SHAPE TABLE DECODER
+// Apple II shape tables: binary data encoded as direction vectors
+// Directions: 0=up,1=up-right,2=right,3=down-right,
+//             4=down,5=down-left,6=left,7=up-left
+// Bit 6 set = plot point; bit 7 set = end of shape
+// ═══════════════════════════════════════════════════════════
+function decodeShapeTable(mem, baseAddr) {
+  // mem is the _mem object, baseAddr is where the table starts
+  // Returns array of {x,y,plot} vectors for each shape
+  var shapes = [];
+  try {
+    var numShapes = mem[baseAddr] || 1;
+    for (var s = 1; s <= numShapes; s++) {
+      var offsetLo = mem[baseAddr + s*2 - 1] || 0;
+      var offsetHi = mem[baseAddr + s*2]     || 0;
+      var shapeStart = baseAddr + offsetLo + offsetHi*256;
+      var vectors = [];
+      var cx=0, cy=0;
+      var maxBytes = 64;
+      for (var i=0; i<maxBytes; i++) {
+        var b = mem[shapeStart + i] || 0;
+        if (b === 0) break;
+        // Each byte can encode 1 or 2 vectors
+        // Low 3 bits = first vector direction
+        // Bit 2 = plot for first vector
+        // Bits 3-5 = second vector direction (if nonzero)
+        // Bit 5 = plot for second vector
+        // Bit 6 = set means END
+        var dir1  = b & 7;
+        var plot1 = (b & 64) !== 0;
+        var dir2  = (b >> 3) & 7;
+        var dx1=0,dy1=0,dx2=0,dy2=0;
+        var DX=[0,1,1,1,0,-1,-1,-1], DY=[-1,-1,0,1,1,1,0,-1];
+        dx1=DX[dir1]; dy1=DY[dir1];
+        cx+=dx1; cy+=dy1;
+        if(plot1) vectors.push({x:cx,y:cy,plot:true});
+        else vectors.push({x:cx,y:cy,plot:false});
+        if(dir2 !== 0) {
+          dx2=DX[dir2]; dy2=DY[dir2];
+          var plot2 = (b & 32) !== 0;
+          cx+=dx2; cy+=dy2;
+          if(plot2) vectors.push({x:cx,y:cy,plot:true});
+        }
+        if((b & 128) !== 0) break; // end of shape
+      }
+      shapes.push(vectors);
+    }
+  } catch(e) { shapes = []; }
+  return shapes;
+}
+
+var _PY_FUNCS = new Set([
+  // Python builtins
+  'int','abs','float','str','len','ord','chr','print','input','range',
+  'min','max','sum','round','list','dict','set','tuple','bool','type',
+  // Module names (matched as prefix before dot)
+  'math','random','sys','os',
+  // math module functions (matched as just the function name after 'math.')
+  'sqrt','sin','cos','tan','atan','exp','log','log10','pi','trunc','ceil','floor',
+  // BASIC helper functions
+  '_sgn','_rnd','_midS','_leftS','_rightS','_spc','_tab','_fre','_usr',
+  '_peek','_poke','_scrn','_pdl','_kb_peek','_kb_clear','_speaker_click',
+  '_gr_init','_gr_text','_gr_color','_gr_hcolor','_gr_plot','_gr_vlin',
+  '_gr_hlin','_gr_hmove','_gr_hline_to','_gr_draw_shape',
+  '_dos_open','_dos_close','_dos_set_read','_dos_input_str','_dos_input_num',
+  '_dos_print','_call_usr','_stop','_end','_get',
+  // GW-BASIC graphics and input helpers
+  '_gw_line','_gw_pset','_gw_cx','_gw_cy','_gw_input','_gw_inkey',
+  '_strRep','_pf','_locate',
+  // Other common names that are NOT array variables
+  'parseFloat','parseInt','String','Number','Math','Array','Object',
+  'True','False','None',
+  // Python builtins used in generated code
+  'isinstance','hasattr','getattr','setattr','type','repr','hash',
+  'zip','map','filter','sorted','enumerate','reversed','any','all',
+  'open','print','input','range','len','abs','max','min','sum','round'
+]);
+function _arrBrackets(e) {
+  // Depth-aware array () -> [] converter handles nested: dn(ml(x,0),ml(x,1)) -> dn[ml[x][0]][ml[x][1]]
+  var result = '', i = 0;
+  while (i < e.length) {
+    var m = e.slice(i).match(/^([a-z_][a-z0-9_]*)\(/);
+    if (!m) { result += e[i++]; continue; }
+    var name = m[1];
+    var pStart = i + name.length;
+    var dep = 0, j = pStart;
+    while (j < e.length) {
+      if (e[j] === '(') dep++;
+      else if (e[j] === ')') { dep--; if (dep === 0) break; }
+      j++;
+    }
+    var innerArgs = _arrBrackets(e.slice(pStart + 1, j));
+    if (_PY_FUNCS.has(name) || name.startsWith('_fn_') || name.startsWith('math.') || name.startsWith('random.')) {
+      result += name + '(' + innerArgs + ')';
+    } else {
+      var idxs = [], dep2 = 0, cur = '';
+      for (var k = 0; k < innerArgs.length; k++) {
+        var c = innerArgs[k];
+        if (c === '(' || c === '[') dep2++;
+        else if (c === ')' || c === ']') dep2--;
+        if (c === ',' && dep2 === 0) { idxs.push(cur.trim()); cur = ''; }
+        else cur += c;
+      }
+      if (cur.trim()) idxs.push(cur.trim());
+      result += name + idxs.map(function(x){ return '['+x+']'; }).join('');
+    }
+    i = j + 1;
+  }
+  return result;
+}
+
+// ── String-aware identifier lowercaser ───────────────────────
+var _PY_KEYWORDS=new Set([
+  // Only rename BASIC variable names that clash with Python keywords
+  // (operators and control flow are already handled by BASIC converter)
+  'in','is','as','lambda','yield','with','del','global','nonlocal',
+  'assert','raise','import','from','class','finally'
+]);
+function _lcIdents(e) {
+  // Walk character by character; skip "..." strings and _helper names
+  // Rename Python keywords used as BASIC variables by appending _v
+  var res='', inStr=false, i=0;
+  while(i<e.length){
+    if(e[i]==='"'){ inStr=!inStr; res+=e[i++]; continue; }
+    if(inStr){ res+=e[i++]; continue; }
+    var m=e.slice(i).match(/^([A-Za-z_][A-Za-z0-9_]*)/);
+    if(m){
+      var word=m[1];
+      if(word[0]==='_' || word.indexOf('.')>=0){
+        res+=word;
+      } else {
+        var lw=word.toLowerCase();
+        // If this bare word is a Python keyword, prefix with _v_ to avoid clash
+        if(_PY_KEYWORDS.has(lw)) lw='_v_'+lw;
+        res+=lw;
+      }
+      i+=word.length;
+    } else { res+=e[i++]; }
+  }
+  return res;
+}
+
+// ── Python comparison fixer (= → == in conditions) ───────────
+function _fixCmp(e){
+  // Replace bare = (not ==, !=, <=, >=) with ==
+  // Run in a loop until stable
+  var prev='';
+  while(prev!==e){
+    prev=e;
+    e=e.replace(/([^=!<>])=([^=])/g,'$1==$2');
+  }
+  return e;
+}
+
+// ── Array () → [] converter ───────────────────────────────────
+// Python functions stay as func() but array variables become arr[i]
+
+
+
+function exprConvPy(e,fnDefs) {
+  e=e.trim();
+  // ── Function substitutions (before any lowercasing) ────────
+  e=e.replace(/\bINT\s*\(/gi,'int(');
+  e=e.replace(/\bABS\s*\(/gi,'abs(');
+  e=e.replace(/\bSGN\s*\(/gi,'_sgn(');
+  e=e.replace(/\bSQR\s*\(/gi,'math.sqrt(');
+  e=e.replace(/\bSIN\s*\(/gi,'math.sin(');
+  e=e.replace(/\bCOS\s*\(/gi,'math.cos(');
+  e=e.replace(/\bTAN\s*\(/gi,'math.tan(');
+  e=e.replace(/\bATN\s*\(/gi,'math.atan(');
+  e=e.replace(/\bEXP\s*\(/gi,'math.exp(');
+  e=e.replace(/\bLOG\s*\(/gi,'math.log(');
+  e=e.replace(/\bRND\s*\(\s*0\s*\)/gi,'_rnd(0)');
+  e=e.replace(/\bRND\s*\(([^)]+)\)/gi,function(_,a){return '_rnd('+exprConvPy(a,fnDefs)+')';});
+  e=e.replace(/\bLEN\s*\(/gi,'len(');
+  e=e.replace(/\bMID\$\s*\(/gi,'_midS(');
+  e=e.replace(/\bLEFT\$\s*\(/gi,'_leftS(');
+  e=e.replace(/\bRIGHT\$\s*\(/gi,'_rightS(');
+  e=e.replace(/\bSTR\$\s*\(/gi,'str(');
+  e=e.replace(/\bVAL\s*\(/gi,'float(');
+  // CHR$: wrap arg in int() and close both parens
+  e=e.replace(/\bCHR\$\s*\(([^)]+)\)/gi,function(_,a){return 'chr(int('+exprConvPy(a,fnDefs)+'))';});
+  e=e.replace(/\bASC\s*\(/gi,'ord(');
+  e=e.replace(/\bSPC\s*\(/gi,'_spc(');
+  e=e.replace(/\bTAB\s*\(/gi,'_tab(');
+  e=e.replace(/\bSCRN\s*\(/gi,'_scrn(');
+  e=e.replace(/\bPDL\s*\(/gi,'_pdl(');
+  e=e.replace(/\bSTICK\s*\(/gi,'_gw_stick(');
+  e=e.replace(/\bSTRIG\s*\(/gi,'_gw_strig(');
+  e=e.replace(/\bFRE\s*\(/gi,'_fre(');
+  e=e.replace(/\bUSR\s*\(/gi,'_usr(');
+  // GW-BASIC functions
+  e=e.replace(/\bINPUT\$\s*\(([^)]+)\)/gi,function(_,n){return '_gw_input(int('+exprConvPy(n,fnDefs)+'))';});
+  e=e.replace(/\bSTRING\$\s*\(([^,)]+),([^)]+)\)/gi,function(_,n,c){
+    var cn=exprConvPy(c.trim(),fnDefs);
+    var nn=exprConvPy(n.trim(),fnDefs);
+    // STRING$(n, charcode) or STRING$(n, string)
+    return '_strRep('+nn+','+cn+')';
+  });
+  e=e.replace(/\bPOS\s*\(\s*\d+\s*\)/gi,'0  # POS()');
+  e=e.replace(/\bCSRLIN\b/gi,'1  # CSRLIN');
+  e=e.replace(/\bTIMER\b/gi,'__import__("time").time()%86400');
+  e=e.replace(/\bINKEY\$\b/gi,'_gw_inkey()');
+
+  // Special PEEK addresses
+  e=e.replace(/\bPEEK\s*\(\s*(-?\d+)\s*\)/gi,function(_,addr){
+    return PEEK_SPECIAL_PY[addr.trim()]||('_peek('+addr.trim()+')');
+  });
+  e=e.replace(/\bPEEK\s*\(/gi,'_peek(');
+  // DEF FN calls
+  e=e.replace(/\bFN\s+([A-Za-z][A-Za-z0-9]*)\s*\(([^)]*)\)/gi,function(_,nm,arg){
+    return '_fn_'+nm.toLowerCase()+'('+exprConvPy(arg,fnDefs)+')';
+  });
+  // Variable type suffixes: NAME% → _i_name  NAME$ → _s_name
+  e=e.replace(/([A-Za-z][A-Za-z0-9]*)\%/g,function(_,v){return '_i_'+v.toLowerCase();});
+  e=e.replace(/([A-Za-z][A-Za-z0-9]*)\$/g,function(_,v){return '_s_'+v.toLowerCase();});
+  // Operators
+  e=e.replace(/<>/g,'!=');
+  e=e.replace(/\^/g,'**');
+  e=e.replace(/\bAND\b/gi,' and ');
+  e=e.replace(/\bOR\b/gi,' or ');
+  e=e.replace(/\bNOT\b/gi,' not ');
+  // Lowercase identifiers but NOT string literal content
+  e=_lcIdents(e);
+  // Convert array access a(i) → a[i] (but not function calls)
+  e=_arrBrackets(e);
+  return e;
+}
+
+
+function convPrintArgsPy(args,fnDefs) {
+  if(args.trim()==='')return 'print()';
+  var trailSemi=/;\s*$/.test(args), trailComma=/,\s*$/.test(args);
+  var parts=[],cur='',inStr=false,depth=0;
+  for(var i=0;i<args.length;i++){
+    var ch=args[i];
+    if(ch==='"')inStr=!inStr;
+    if(!inStr){if(ch==='('||ch==='[')depth++;if(ch===')'||ch===']')depth--;}
+    if(!inStr&&depth===0&&(ch===';'||ch===',')){if(cur.trim())parts.push(cur.trim());cur='';}
+    else cur+=ch;
+  }
+  if(cur.trim())parts.push(cur.trim());
+  var pp=parts.map(function(p){
+    // Only apply _fixCmp to non-string expressions (comparisons in PRINT)
+    var v=exprConvPy(p,fnDefs);
+    // For pure string literals, don't run fixCmp (it mangled "X=" -> "X==")
+    var isStr=/^"/.test(v)||/^_s_/.test(v);
+    if(!isStr) v=_fixCmp(v);
+    // Applesoft/GW-BASIC: numeric values in PRINT get space-padded (sign + trailing)
+    return isStr?v:'_pf('+v+')';
+  });
+  var joined=pp.join('+');  // + concatenates, not , (which adds spaces)
+  if(trailSemi) return "print("+joined+", end='')";
+  if(trailComma) return "print("+joined+", end='\\t')";
+  return "print("+joined+")";
+}
+
+
+
+// Detect DOS 3.3 CHR$(4) file commands
+function dosCmd(stmt,ind,warnings) {
+  // Pattern: PRINT CHR$(4);"OPEN filename" etc
+  var m=stmt.match(/^(?:PRINT|\?)\s*CHR\$\s*\(\s*4\s*\)\s*[;,]\s*"([^"]*)"/i);
+  if(!m)return null;
+  var cmd=m[1].trim().toUpperCase();
+  var parts=cmd.split(/\s+/,2);
+  var op=parts[0], fname=parts[1]||'_dos_file';
+  var pyFname='"'+fname.toLowerCase()+'"';
+  if(op==='OPEN')   return [ind+'_dos_open('+pyFname+',"r")'];
+  if(op==='APPEND') return [ind+'_dos_open('+pyFname+',"a")'];
+  if(op==='WRITE')  return [ind+'_dos_open('+pyFname+',"w")'];
+  if(op==='CREATE') return [ind+'_dos_open('+pyFname+',"w")'];
+  if(op==='CLOSE')  return [ind+'_dos_close()'];
+  if(op==='DELETE') return [ind+'import os; os.remove('+pyFname+') if os.path.exists('+pyFname+') else None'];
+  if(op==='READ')   return [ind+'_dos_set_read()'];
+  if(op==='EXEC')   { warnings.push('DOS EXEC not supported'); return [ind+'pass  # EXEC '+fname]; }
+  return null;
+}
+function dosCmdJS(stmt,ind,warnings) {
+  var m=stmt.match(/^(?:PRINT|\?)\s*CHR\$\s*\(\s*4\s*\)\s*[;,]\s*"([^"]*)"/i);
+  if(!m)return null;
+  var cmd=m[1].trim().toUpperCase();
+  var parts=cmd.split(/\s+/,2);
+  var op=parts[0], fname=(parts[1]||'file').toLowerCase();
+  if(op==='OPEN')   return [ind+'_dosOpen("'+fname+'","r");'];
+  if(op==='APPEND') return [ind+'_dosOpen("'+fname+'","a");'];
+  if(op==='WRITE')  return [ind+'_dosOpen("'+fname+'","w");'];
+  if(op==='CREATE') return [ind+'_dosOpen("'+fname+'","w");'];
+  if(op==='CLOSE')  return [ind+'_dosClose();'];
+  if(op==='DELETE') return [ind+'_dosDelete("'+fname+'");'];
+  if(op==='READ')   return [ind+'_dosSetRead();'];
+  return null;
+}
+
+// Fix BASIC = to Python == in condition contexts
+function fixPyCmp(e) {
+  var result='',inStr=false,i=0;
+  while(i<e.length){
+    if(e[i]==='"'){inStr=!inStr;result+=e[i++];continue;}
+    if(inStr){result+=e[i++];continue;}
+    if(e[i]==='='&&(i===0||'=!<>'.indexOf(e[i-1])<0)&&(i+1>=e.length||e[i+1]!=='=')){
+      result+='==';i++;
+    } else {result+=e[i++];}
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PYTHON STATEMENT CONVERTER (Applesoft)
+// ═══════════════════════════════════════════════════════════
+function convStmtPy(stmt,ind,ctx) {
+  var warnings=ctx.warnings,fnDefs=ctx.fnDefs;
+  stmt=stmt.trim(); if(!stmt)return[];
+  var out=[],E=function(x){return exprConvPy(x,fnDefs);};
+
+  if(/^REM\b/i.test(stmt)||stmt.startsWith("'")){out.push(ind+'# '+stmt.replace(/^REM\s*/i,'').replace(/^'/,''));return out;}
+  if(/^END$/i.test(stmt)){out.push(ind+'_end()');return out;}
+  if(/^STOP$/i.test(stmt)){out.push(ind+'_stop(_line)');return out;}
+  if(/^CONT$/i.test(stmt)){out.push(ind+'pass  # CONT');return out;}
+
+  // DOS 3.3 CHR$(4) file commands — must check before PRINT
+  var dosOut=dosCmd(stmt,ind,warnings);
+  if(dosOut)return dosOut;
+
+  var prM=stmt.match(/^(?:PRINT|\?)\s*(.*)/is);
+  if(prM){out.push(ind+convPrintArgsPy(prM[1],fnDefs));return out;}
+
+  var inM=stmt.match(/^INPUT\s+(.+)/i);
+  if(inM){
+    var rest=inM[1].trim(),prompt='"? "';
+    var pm=rest.match(/^"([^"]*)"\s*[;,]\s*(.+)/);
+    if(pm){prompt='"'+pm[1]+' "';rest=pm[2];}
+    rest.split(',').forEach(function(v){var vt=v.trim(),pv=E(vt),isStr=/\$$/.test(vt);
+      out.push(isStr?ind+pv+' = input('+prompt+')':ind+pv+' = float(input('+prompt+'))');});
+    return out;
+  }
+
+  // INPUT from DOS file
+  var inDosM=stmt.match(/^INPUT\s*#\s*\d+\s*,\s*(.+)/i);
+  if(inDosM){
+    inDosM[1].split(',').forEach(function(v){var vt=v.trim(),pv=E(vt),isStr=/\$$/.test(vt);
+      out.push(isStr?ind+pv+' = _dos_input_str()':ind+pv+' = _dos_input_num()');});
+    return out;
+  }
+
+  var getM=stmt.match(/^GET\s+(.+)/i);
+  if(getM){out.push(ind+E(getM[1].trim())+' = _get()');return out;}
+
+  var readM=stmt.match(/^READ\s+(.+)/i);
+  if(readM){readM[1].split(',').forEach(function(v){var vt=v.trim(),pv=E(vt),isStr=/\$/.test(vt);
+    out.push(isStr?ind+pv+' = str(_data[_dp]); _dp += 1':ind+pv+' = float(_data[_dp]); _dp += 1');});return out;}
+
+  if(/^RESTORE$/i.test(stmt)){out.push(ind+'_dp = 0');return out;}
+  if(/^DATA\b/i.test(stmt)){out.push(ind+'# DATA '+stmt.slice(4).trim());return out;}
+
+  var defM=stmt.match(/^DEF\s+FN\s+([A-Za-z][A-Za-z0-9]*)\s*\(([^)]*)\)\s*=\s*(.+)/i);
+  if(defM){var nm=defM[1].toLowerCase(),param=E(defM[2].trim()),body=E(defM[3]);fnDefs.push(nm);
+    out.push(ind+'def _fn_'+nm+'('+param+'): return '+body);return out;}
+
+  // Assignment — depth-aware = finder handles nested arrays on LHS
+  // e.g. DN%(ML%(X,0),ML%(X,1))=value -> dn[ml[x][0]][ml[x][1]] = value
+  // Guard: skip if statement starts with a BASIC keyword that uses = differently
+  var _letSkip=/^(FOR|IF|DEF|COLOR|HCOLOR|SCALE|ROT|SPEED|PRINT|INPUT|LET\s*$)\b/i.test(stmt)&&!/^LET\s+[A-Za-z]/i.test(stmt);
+  if(!_letSkip){
+    var _letDepth=0, _letEq=-1;
+    var _letStart=stmt.match(/^LET\s+/i)?stmt.match(/^LET\s+/i)[0].length:0;
+    for(var _ci=_letStart;_ci<stmt.length;_ci++){
+      var _cc=stmt[_ci];
+      if(_cc==='('||_cc==='[')_letDepth++;
+      else if(_cc===')'||_cc===']')_letDepth--;
+      else if(_cc==='='&&_letDepth===0&&(_ci===0||'=!<>'.indexOf(stmt[_ci-1])<0)&&(_ci+1>=stmt.length||stmt[_ci+1]!=='=')){
+        _letEq=_ci; break;
+      }
+    }
+    if(_letEq>_letStart){
+      var _lhsRaw=stmt.slice(_letStart,_letEq).trim();
+      var _rhsRaw=stmt.slice(_letEq+1).trim();
+      if(/^[A-Za-z]/.test(_lhsRaw)){
+        out.push(ind+E(_lhsRaw)+' = '+E(_rhsRaw));return out;
+      }
+    }
+  }
+
+  var forM=stmt.match(/^FOR\s+([A-Za-z][A-Za-z0-9]*%?)\s*=\s*(.+?)\s+TO\s+(.+?)(?:\s+STEP\s+(.+))?$/i);
+  if(forM){
+    var v=E(forM[1]), s=E(forM[2]), e2=E(forM[3]), st=forM[4]?E(forM[4]):'1';
+    var vk=v.replace(/[^a-z0-9]/g,'_');
+    out.push(ind+v+' = '+s);
+    out.push(ind+'_for_end_'+vk+' = ('+e2+')');
+    out.push(ind+'_for_step_'+vk+' = ('+st+')');
+    out.push(ind+'_for_restart_'+vk+' = _lnums[_lmap[_line]+1]  # next line after FOR');
+    return out;
+  }
+  var nextM=stmt.match(/^NEXT(?:\s+([A-Za-z][A-Za-z0-9]*%?))?$/i);
+  if(nextM){
+    var nv = nextM[1] ? E(nextM[1].trim()) : null;
+    if(nv){
+      var nvk=nv.replace(/[^a-z0-9_]/g,'_');
+      out.push(ind+nv+' += _for_step_'+nvk);
+      out.push(ind+'if (_for_step_'+nvk+' >= 0 and '+nv+' <= _for_end_'+nvk+') or (_for_step_'+nvk+' < 0 and '+nv+' >= _for_end_'+nvk+'):');
+      out.push(ind+'    _line=_for_restart_'+nvk+';continue');
+    } else {
+      out.push(ind+'pass  # NEXT without variable name');
+    }
+    return out;
+  }
+
+  var gotoM=stmt.match(/^GOTO\s+(\d+)$/i);
+  if(gotoM){out.push(ind+'_line='+gotoM[1]+';continue');return out;}
+
+  // ON ERROR GOTO — check before ON GOTO (which would catch "ON ERROR")
+  var _onErrEarly=stmt.match(/^ON\s+ERROR\s+GOTO\s+(\d+)$/i);
+  if(_onErrEarly){out.push(ind+'_onerr = '+_onErrEarly[1]);return out;}
+
+    var onGotoM=stmt.match(/^ON\s+(.+?)\s+GOTO\s+(.+)$/i);
+  if(onGotoM){var tgts=onGotoM[2].split(',').map(function(t){return t.trim();});
+    out.push(ind+'_on_idx = int('+_fixCmp(E(onGotoM[1]))+') - 1');
+    tgts.forEach(function(t,i){out.push(ind+(i===0?'if':'elif')+' _on_idx=='+i+': _line='+t+';continue');});return out;}
+
+  var onGosubM=stmt.match(/^ON\s+(.+?)\s+GOSUB\s+(.+)$/i);
+  if(onGosubM){var tgts=onGosubM[2].split(',').map(function(t){return t.trim();});
+    out.push(ind+'_on_idx = int('+_fixCmp(E(onGosubM[1]))+') - 1');
+    tgts.forEach(function(t,i){out.push(ind+(i===0?'if':'elif')+' _on_idx=='+i+': _ret.append(_lnums[_lmap[_line]+1]);_line='+t+';continue');});return out;}
+
+  var gosubM=stmt.match(/^GOSUB\s+(\d+)$/i);
+  if(gosubM){out.push(ind+'_ret.append(_lnums[_lmap[_line]+1]);_line='+gosubM[1]+';continue');return out;}
+  if(/^RETURN$/i.test(stmt)){out.push(ind+'_line=_ret.pop();continue');return out;}
+  if(/^POP$/i.test(stmt)){out.push(ind+'if _ret: _ret.pop()');return out;}
+
+  var onerrM=stmt.match(/^ONERR\s+GOTO\s+(\d+)$/i);
+  if(onerrM){out.push(ind+'_onerr = '+onerrM[1]);return out;}
+  if(/^RESUME\s+NEXT$/i.test(stmt)){out.push(ind+'_err_flag=False;_line=_err_resume;continue');return out;}
+  if(/^RESUME$/i.test(stmt)){out.push(ind+'_err_flag=False');return out;}
+
+  // IF THEN [ELSE] — unified string-aware handler
+  // Handles: IF cond THEN body, IF cond THEN body ELSE alt
+  // Also handles multi-statement THEN bodies: IF x THEN PRINT a;:Y=f(b) ELSE GOSUB n
+  if(/^IF\b/i.test(stmt)){
+    var _ifRest=stmt.slice(stmt.match(/^IF\s*/i)[0].length);
+    // Find THEN (outside strings)
+    var _tIdx=-1,_iStr=false;
+    for(var _ti=0;_ti<_ifRest.length-3;_ti++){
+      if(_ifRest[_ti]==='"')_iStr=!_iStr;
+      if(!_iStr&&_ifRest.slice(_ti).match(/^THEN\b/i)&&(_ti===0||/[\s)]/.test(_ifRest[_ti-1]))){_tIdx=_ti;break;}
+    }
+    if(_tIdx>=0){
+      var _icond=_ifRest.slice(0,_tIdx).trim();
+      var _iafter=_ifRest.slice(_tIdx+4).trim();
+      // Find ELSE (outside strings)
+      var _eIdx=-1;_iStr=false;
+      for(var _ei=0;_ei<_iafter.length-3;_ei++){
+        if(_iafter[_ei]==='"')_iStr=!_iStr;
+        if(!_iStr&&_iafter.slice(_ei).match(/^ELSE\b/i)&&(_ei===0||/[\s:]/.test(_iafter[_ei-1]))){_eIdx=_ei;break;}
+      }
+      out.push(ind+'if '+_fixCmp(E(_icond))+':');
+      var _tbody=_eIdx>=0?_iafter.slice(0,_eIdx).trim():_iafter.trim();
+      var _tgonly=_tbody.match(/^(?:GOTO\s+)?(\d+)$/i);
+      if(_tgonly){out.push(ind+'    _line='+_tgonly[1]+';continue');}
+      else{splitColon(_tbody).forEach(function(s){convStmtPy(s,ind+'    ',ctx).forEach(function(l){out.push(l);});});}
+      if(_eIdx>=0){
+        var _ebody=_iafter.slice(_eIdx+4).trim();
+        out.push(ind+'else:');
+        var _egonly=_ebody.match(/^(?:GOTO\s+)?(\d+)$/i);
+        if(_egonly){out.push(ind+'    _line='+_egonly[1]+';continue');}
+        else{splitColon(_ebody).forEach(function(s){convStmtPy(s,ind+'    ',ctx).forEach(function(l){out.push(l);});});}
+      }
+      return out;
+    }
+  }
+  var ifM=stmt.match(/^IF\s+(.+?)\s+THEN\s+(.+)$/i);
+  if(ifM){
+    var then=ifM[2].trim(), gonly=then.match(/^(?:GOTO\s+)?(\d+)$/i);
+    out.push(ind+'if '+_fixCmp(E(ifM[1]))+':');
+    if(gonly) out.push(ind+'    _line='+gonly[1]+';continue');
+    else splitColon(then).forEach(function(s){convStmtPy(s,ind+'    ',ctx).forEach(function(l){out.push(l);});});
+    return out;
+  }
+  var ifGotoM=stmt.match(/^IF\s+(.+?)\s+GOTO\s+(\d+)$/i);
+  if(ifGotoM){out.push(ind+'if '+_fixCmp(E(ifGotoM[1]))+': _line='+ifGotoM[2]+';continue');return out;}
+
+
+  var dimM=stmt.match(/^DIM\s+(.+)$/i);
+  if(dimM){var decls=[],cur='',depth=0;
+    (dimM[1]+',').split('').forEach(function(ch){if(ch==='(')depth++;if(ch===')')depth--;if(ch===','&&depth===0){decls.push(cur.trim());cur='';}else cur+=ch;});
+    decls.forEach(function(d){var am=d.match(/([A-Za-z][A-Za-z0-9]*[%$]?)\s*\(([^)]+)\)/i);
+      if(am){var nm=E(am[1]),dims=am[2].split(',').map(function(x){return parseInt(x.trim())+1;});
+        if(dims.length===1)out.push(ind+nm+'=[0]*'+dims[0]);
+        else if(dims.length===2)out.push(ind+nm+'=[[0]*'+dims[1]+' for _ in range('+dims[0]+')]');
+        else out.push(ind+nm+'=[[[0]*'+dims[2]+' for _ in range('+dims[1]+')] for _ in range('+dims[0]+')]');}});
+    return out;}
+
+  // Graphics
+  if(/^GR$/i.test(stmt)){out.push(ind+"_gr_init('lo')");return out;}
+  if(/^HGR2$/i.test(stmt)){out.push(ind+"_gr_init('hi2')");return out;}
+  if(/^HGR$/i.test(stmt)){out.push(ind+"_gr_init('hi')");return out;}
+  var colorM=stmt.match(/^COLOR\s*=\s*(.+)$/i);
+  if(colorM){out.push(ind+'_gr_color(int('+E(colorM[1])+'))');return out;}
+  var hcolorM=stmt.match(/^HCOLOR\s*=\s*(.+)$/i);
+  if(hcolorM){out.push(ind+'_gr_hcolor(int('+E(hcolorM[1])+'))');return out;}
+  var scaleM=stmt.match(/^SCALE\s*=\s*(.+)$/i);
+  if(scaleM){out.push(ind+'_gr_scale=int('+E(scaleM[1])+')');return out;}
+  var rotM=stmt.match(/^ROT\s*=\s*(.+)$/i);
+  if(rotM){out.push(ind+'_gr_rot=int('+E(rotM[1])+')');return out;}
+  var plotM=stmt.match(/^PLOT\s+(.+?)\s*,\s*(.+)$/i);
+  if(plotM){out.push(ind+'_gr_plot(int('+E(plotM[1])+'),int('+E(plotM[2])+'))');return out;}
+  var hplotM=stmt.match(/^HPLOT\s+(.+)$/i);
+  if(hplotM){var pts=hplotM[1].split(/\bTO\b/i).map(function(p){return p.trim();});
+    var xy0=pts[0].split(',').map(function(q){return q.trim();});
+    out.push(ind+'_gr_hmove(int('+E(xy0[0])+'),int('+E(xy0[1])+'))');
+    for(var i=1;i<pts.length;i++){var xy=pts[i].split(',').map(function(q){return q.trim();});out.push(ind+'_gr_hline_to(int('+E(xy[0])+'),int('+E(xy[1])+'))');}
+    return out;}
+  var vlinM=stmt.match(/^VLIN\s+(.+?)\s*,\s*(.+?)\s+AT\s+(.+)$/i);
+  if(vlinM){out.push(ind+'_gr_vlin(int('+E(vlinM[1])+'),int('+E(vlinM[2])+'),int('+E(vlinM[3])+'))');return out;}
+  var hlinM=stmt.match(/^HLIN\s+(.+?)\s*,\s*(.+?)\s+AT\s+(.+)$/i);
+  if(hlinM){out.push(ind+'_gr_hlin(int('+E(hlinM[1])+'),int('+E(hlinM[2])+'),int('+E(hlinM[3])+'))');return out;}
+
+  // DRAW/XDRAW — shape table with decoder
+  var drawM=stmt.match(/^(X?)DRAW\s+(.+?)\s+AT\s+(.+?)\s*,\s*(.+)$/i);
+  if(drawM){
+    var isXdraw=drawM[1].toUpperCase()==='X';
+    out.push(ind+'_gr_draw_shape(int('+E(drawM[2])+'),int('+E(drawM[3])+'),int('+E(drawM[4])+'),'+isXdraw+',_gr_scale,_gr_rot)');
+    return out;
+  }
+  // DRAW without AT (shape index only)
+  var draw2M=stmt.match(/^(X?)DRAW\s+(\d+)$/i);
+  if(draw2M){
+    var isXdraw=draw2M[1].toUpperCase()==='X';
+    out.push(ind+'_gr_draw_shape(int('+E(draw2M[2])+'),_gr_cx,_gr_cy,'+isXdraw+',_gr_scale,_gr_rot)');
+    return out;
+  }
+
+  if(/^TEXT$/i.test(stmt)){out.push(ind+'_gr_text()');return out;}
+  if(/^HOME$/i.test(stmt)){out.push(ind+"print('\\033[2J\\033[H',end='')");return out;}
+  if(/^INVERSE$/i.test(stmt)){out.push(ind+"print('\\033[7m',end='')");return out;}
+  if(/^NORMAL$/i.test(stmt)){out.push(ind+"print('\\033[0m',end='')");return out;}
+  if(/^FLASH$/i.test(stmt)){out.push(ind+"print('\\033[5m',end='')");return out;}
+  var vtabM=stmt.match(/^VTAB\s+(.+)$/i);
+  if(vtabM){out.push(ind+"print(f'\\033[{int("+E(vtabM[1])+")+1};1H',end='')");return out;}
+  var htabM=stmt.match(/^HTAB\s+(.+)$/i);
+  if(htabM){out.push(ind+"print(f'\\033[{int("+E(htabM[1])+")}G',end='')");return out;}
+
+  // POKE with special hardware address handling
+  var pokeM=stmt.match(/^POKE\s+(-?\d+)\s*,\s*(.+)$/i);
+  if(pokeM){
+    var addr=pokeM[1].trim(),val=E(pokeM[2]);
+    if(POKE_SPECIAL_PY[addr]){
+      if(POKE_SPECIAL_PY[addr].endsWith('()')){out.push(ind+POKE_SPECIAL_PY[addr]);}
+      else out.push(ind+'_poke('+addr+','+val+')');
+    } else {
+      out.push(ind+'_poke('+addr+',int('+val+'))');
+    }
+    return out;
+  }
+  // POKE with expression address
+  var pokeExprM=stmt.match(/^POKE\s+(.+?)\s*,\s*(.+)$/i);
+  if(pokeExprM){out.push(ind+'_poke(int('+E(pokeExprM[1])+'),int('+E(pokeExprM[2])+'))');return out;}
+
+  // CALL with ROM lookup table
+  var callM=stmt.match(/^CALL\s+(-?\d+)$/i);
+  if(callM){
+    var caddr=callM[1].trim();
+    if(CALL_TABLE_PY[caddr]){out.push(ind+CALL_TABLE_PY[caddr]);}
+    else{out.push(ind+'_call_usr('+caddr+')  # CALL '+caddr);}
+    return out;
+  }
+  var callExprM=stmt.match(/^CALL\s+(.+)$/i);
+  if(callExprM){out.push(ind+'_call_usr(int('+E(callExprM[1])+'))');return out;}
+
+  if(/^(HIMEM|LOMEM)\s*:/i.test(stmt)||/^SPEED\s*=/i.test(stmt)){out.push(ind+'pass  # '+stmt);return out;}
+  if(/^(PR|IN)#\s*\d+$/i.test(stmt)){out.push(ind+'pass  # '+stmt);return out;}
+  if(/^TRACE$/i.test(stmt)){out.push(ind+'_trace=True');return out;}
+  if(/^NOTRACE$/i.test(stmt)){out.push(ind+'_trace=False');return out;}
+  if(/^CLEAR$/i.test(stmt)){out.push(ind+'pass  # CLEAR');return out;}
+  if(/^(NEW|LIST|LOAD|SAVE|RUN)$/i.test(stmt)){out.push(ind+'pass  # '+stmt);return out;}
+
+
+  // ── LINE command depth-aware coordinate parser ──────────────
+  // LINE (x1,y1)-(x2,y2)[,color[,BF]] or LINE -(x2,y2)[,color[,BF]]
+  // Handles complex coordinates like CD%(DI,0) which contain commas
+  if(/^LINE\b/i.test(stmt)&&!/^LINE\s+INPUT/i.test(stmt)){
+    // Parse the LINE statement manually to handle nested parens in coords
+    var ls=stmt.replace(/^LINE\s*/i,'');
+    // Helper: find depth-0 comma in a string
+    function _findComma(s){
+      var d=0;
+      for(var k=0;k<s.length;k++){
+        if(s[k]==='('||s[k]==='[')d++;
+        else if(s[k]===')'||s[k]===']')d--;
+        else if(s[k]===','&&d===0)return k;
+      }
+      return -1;
+    }
+    // Helper: find contents inside first (...) group
+    function _innerParen(s,from){
+      from=from||0;
+      var start=s.indexOf('(',from);
+      if(start<0)return null;
+      var d=0,j=start;
+      while(j<s.length){if(s[j]==='(')d++;else if(s[j]===')')d--;if(d===0)break;j++;}
+      return{inner:s.slice(start+1,j),end:j};
+    }
+    var _lx1='_gw_cx',_ly1='_gw_cy',_lx2,_ly2,_lcolor='None',_lbf='False';
+    var _lpos=0;
+    // Check for optional start point (X1,Y1)
+    if(ls.charAt(0)==='('){
+      var _p1=_innerParen(ls,0);
+      var _ci=_findComma(_p1.inner);
+      if(_ci>=0){_lx1=E(_p1.inner.slice(0,_ci).trim());_ly1=E(_p1.inner.slice(_ci+1).trim());}
+      _lpos=_p1.end+1;
+    }
+    // Skip -
+    while(_lpos<ls.length&&(ls[_lpos]===' '||ls[_lpos]==='-'))_lpos++;
+    // Parse end point (X2,Y2)
+    if(ls.charAt(_lpos)==='('){
+      var _p2=_innerParen(ls,_lpos);
+      var _ci2=_findComma(_p2.inner);
+      if(_ci2>=0){_lx2=E(_p2.inner.slice(0,_ci2).trim());_ly2=E(_p2.inner.slice(_ci2+1).trim());}
+      else{_lx2=E(_p2.inner.trim());_ly2='0';}
+      _lpos=_p2.end+1;
+    }
+    // Parse optional ,color,BF
+    var _lrest=ls.slice(_lpos).trim();
+    if(_lrest.charAt(0)===','){
+      _lrest=_lrest.slice(1).trim();
+      // Check for BF at end
+      if(/,\s*BF?\s*\$/i.test(_lrest)){
+        _lbf='True';
+        _lrest=_lrest.replace(/,\s*BF?\s*\$/i,'').trim();
+      }
+      if(_lrest)_lcolor=E(_lrest);
+    }
+    if(_lx2!==undefined){
+      out.push(ind+'_gw_line('+_lx1+','+_ly1+','+_lx2+','+_ly2+','+_lcolor+','+_lbf+')');
+      return out;
+    }
+  }
+
+  // ── GW-BASIC / general BASIC commands ──────────────────────
+  // CLS — clear screen
+  if(/^CLS$/i.test(stmt)){out.push(ind+"print('\\033[2J\\033[H',end='')");return out;}
+
+  // KEY OFF / KEY ON — disable/enable function key display
+  if(/^KEY\s+(OFF|ON)$/i.test(stmt)){out.push(ind+'pass  # '+stmt);return out;}
+
+  // SCREEN n — screen mode (map to graphics init or text)
+  var screenM=stmt.match(/^SCREEN\s+([0-9,]+)/i);
+  if(screenM){
+    var sm=screenM[1].trim().split(',')[0].trim();
+    if(sm==='0'){out.push(ind+'try: _gr_text()');out.push(ind+'except NameError: pass  # SCREEN 0');}
+    else if(sm==='1'){out.push(ind+'try: _gr_init(\"lo\")');out.push(ind+'except NameError: pass  # SCREEN 1');}
+    else if(sm==='2'){out.push(ind+'try: _gr_init(\"hi\")');out.push(ind+'except NameError: pass  # SCREEN 2');}
+    else{out.push(ind+'pass  # SCREEN '+sm);}
+    return out;
+  }
+
+  // RANDOMIZE — seed the random number generator
+  var randM=stmt.match(/^RANDOMIZE(?:\s+(.+))?$/i);
+  if(randM){
+    var seed=randM[1]?E(randM[1].trim()):'0';
+    out.push(ind+'random.seed(int(abs('+seed+')))');return out;
+  }
+
+  // COLOR n — GW-BASIC text color (approximate with ANSI)
+  var colorGwM=stmt.match(/^COLOR\s+(-?\d+)/i);
+  if(colorGwM){
+    var ANSI_COLORS=['30','34','32','36','31','35','33','37','90','94','92','96','91','95','93','97'];
+    var ci=parseInt(colorGwM[1])&15;
+    out.push(ind+"print('\\033["+ANSI_COLORS[ci]+"m',end='')  # COLOR "+colorGwM[1]);
+    return out;
+  }
+
+  // LOCATE row,col — cursor positioning
+  var locateM=stmt.match(/^LOCATE(?:\s*(.+))?$/i);
+  if(locateM){
+    var largs=(locateM[1]||'').split(',');
+    var lrow=largs[0]&&largs[0].trim()?E(largs[0].trim()):'None';
+    var lcol=largs[1]&&largs[1].trim()?E(largs[1].trim()):'None';
+    if(lrow==='None'&&lcol!=='None')out.push(ind+"print(f'\\033[{int("+lcol+")}G',end='')");
+    else if(lrow!=='None'&&lcol==='None')out.push(ind+"print(f'\\033[{int("+lrow+")+1};1H',end='')");
+    else if(lrow!=='None'&&lcol!=='None')out.push(ind+"print(f'\\033[{int("+lrow+")+1};{int("+lcol+")}H',end='')");
+    else out.push(ind+'pass  # LOCATE');
+    return out;
+  }
+
+  // LINE INPUT var$ — read entire line including commas
+  var lineInputM=stmt.match(/^LINE\s+INPUT(?:\s*;)?(?:\s*"([^"]*)"\s*;)?\s*(.+)$/i);
+  if(lineInputM){
+    var liprompt=lineInputM[1]?'"'+lineInputM[1]+'"':'"? "';
+    var livar=E((lineInputM[2]||'_s_q').trim());
+    out.push(ind+livar+' = input('+liprompt+')');return out;
+  }
+
+  // LINE handled above by depth-aware parser
+
+  // PSET (x,y) or PSET (x,y),color — plot single pixel
+  var psetM=stmt.match(/^PSET\s*\((.+?),(.+?)\)(?:\s*,\s*(.+))?$/i);
+  if(psetM){
+    var px=E(psetM[1]),py=E(psetM[2]),pc=psetM[3]?E(psetM[3]):'None';
+    out.push(ind+'_gw_pset('+px+','+py+','+pc+')');return out;
+  }
+
+  // ON ERROR GOTO n — error handler
+  var onErrM=stmt.match(/^ON\s+ERROR\s+GOTO\s+(\d+)$/i);
+  if(onErrM){out.push(ind+'_onerr = '+onErrM[1]);return out;}
+
+  // STRING$(n,c) used as expression — handled in E(), but as statement:
+  // WINDOW / VIEW / PALETTE etc — ignore gracefully
+  if(/^(WINDOW|VIEW|PALETTE|OPTION|WIDTH|BEEP|SOUND|PLAY|MOTOR|NOISE)\b/i.test(stmt)){
+    out.push(ind+'pass  # '+stmt.split(' ')[0]);return out;
+  }
+
+  warnings.push('Unrecognised: "'+stmt+'"');
+  out.push(ind+'# TODO: '+stmt);
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PYTHON CONVERTER — MAIN
+// ═══════════════════════════════════════════════════════════
+function convertToPython(code) {
+  code = preprocessSource(code);
+  var warnings=[],fnDefs=[],numbered=parseNumbered(code);
+  if(!numbered.length)throw new Error('No valid BASIC line numbers found.');
+  var lineNums=numbered.map(function(l){return l.num;});
+  var src=code.toUpperCase(),has=function(re){return re.test(src);};
+  var needsTk=has(/\b(GR|HGR|HGR2|PLOT|HPLOT|VLIN|HLIN|DRAW|XDRAW)\b/);
+  var hasMath=has(/\b(SQR|SIN|COS|TAN|ATN|LOG|EXP)\b/),hasRnd=has(/\bRND\b/);
+  var hasData=has(/\bDATA\b/),hasOnerr=has(/\bONERR\b/),hasGosub=has(/\bGOSUB\b/);
+  var hasTrace=has(/\bTRACE\b/),hasResNext=has(/\bRESUME\s+NEXT\b/);
+  var hasGet=has(/\bGET\b/),hasScrn=has(/\bSCRN\b/),hasPdl=has(/\bPDL\b/),hasInkey=has(/INKEY\$/),hasStick=has(/\bSTICK\s*\(|\bSTRIG\s*\(|\bPDL\s*\(/),hasKbPeek=has(/PEEK\s*\(\s*-?(16384|49152)\s*\)/);
+  var hasKb=has(/PEEK\s*\(\s*-?16384\b/)||has(/PEEK\s*\(\s*49152\b/);
+  var hasSpeaker=has(/POKE\s*-?16336\b/)||has(/POKE\s*49200\b/);
+  var hasDraw=has(/\b(DRAW|XDRAW)\b/);
+  var hasDos=has(/CHR\$\s*\(\s*4\s*\)/);
+  var hasFileInput=has(/INPUT\s*#/)||has(/PRINT\s*#/);
+  var dataValues=[];
+  numbered.forEach(function(l){splitColon(l.stmt).forEach(function(s){var t=s.trim();if(/^DATA\b/i.test(t))parseDataLine(t.slice(4).trim()).forEach(function(it){dataValues.push(it);});});});
+  var ctx={warnings:warnings,fnDefs:fnDefs,needsTk:needsTk};
+  var L=[],p=function(){for(var i=0;i<arguments.length;i++)L.push(arguments[i]);};
+
+  p('# ═══════════════════════════════════════════════════════');
+  p('# Converted from Applesoft BASIC  \u2192  Python 3');
+  p('# Apple ][ \u2192 Code Converter  v5.0');
+  p('# ═══════════════════════════════════════════════════════');
+  p('');
+  var needsTkOrGw2=needsTk||(has(/\bLINE\s*[-(]/)||has(/\bPSET\b/));
+  if(hasMath||needsTkOrGw2)p('import math');
+  if(hasRnd)p('import random');
+  if(needsTkOrGw2)p('import tkinter as tk');
+  if(hasKb||hasGet)p('import threading, queue, sys');
+  else p('import sys');
+  if(hasGet)p('import tty, termios');
+  if(hasSpeaker)p('import math as _math_sound');
+  if(hasDos||hasFileInput)p('import os');
+  p('');
+
+  // Core helpers
+  p('def _sgn(x): return 1 if x>0 else (-1 if x<0 else 0)');
+  p('_rnd_last=0.0');
+  p('def _rnd(x):');
+  p('    global _rnd_last');
+  p('    if x>0: _rnd_last=random.random(); return _rnd_last');
+  p('    if x==0: return _rnd_last');
+  p('    random.seed(int(x)); _rnd_last=random.random(); return _rnd_last');
+  p('def _midS(s,st,n=None): s=str(s);i=int(st)-1; return s[i:] if n is None else s[i:i+int(n)]');
+  p('def _leftS(s,n): return str(s)[:int(n)]');
+  p('def _rightS(s,n): s=str(s); return s[-int(n):] if int(n) else ""');
+  p('def _pf(v):');
+  p('    # Applesoft/GW-BASIC PRINT formatting: numbers get sign space + trailing space');
+  p('    s=str(v) if isinstance(v,str) else str(v)');
+  p('    if isinstance(v,(int,float)): s=(" " if v>=0 else "")+s+" "');
+  p('    return s');
+  p('def _spc(n): return " "*int(n)');
+  p('def _tab(n): return " "*int(n)');
+  p('def _fre(x): return 35000');
+  p('def _usr(x): return 0');
+  if(hasScrn)p('def _scrn(x,y): return 0');
+    // tkinter key state tracking for joystick/paddle/INKEY$ emulation
+  if(needsTk||hasPdl||hasStick||hasInkey||hasKbPeek){
+    p('_keys_held=set()');
+    p('_joy_x=127');
+    p('_joy_y=127');
+    p('_inkey_cached=""');
+    p('def _on_key_press(event):');
+    p('    global _joy_x,_joy_y,_inkey_cached');
+    p('    k=event.keysym');
+    p('    _keys_held.add(k)');
+    p('    if k=="Up": _joy_y=0; _inkey_cached=chr(0)+chr(72)');
+    p('    elif k=="Down": _joy_y=255; _inkey_cached=chr(0)+chr(80)');
+    p('    elif k=="Left": _joy_x=0; _inkey_cached=chr(0)+chr(75)');
+    p('    elif k=="Right": _joy_x=255; _inkey_cached=chr(0)+chr(77)');
+    p('    elif k=="Return": _inkey_cached=chr(13)');
+    p('    elif k=="Escape": _inkey_cached=chr(27)');
+    p('    elif len(event.char)==1: _inkey_cached=event.char');
+    p('def _on_key_release(event):');
+    p('    global _joy_x,_joy_y');
+    p('    k=event.keysym');
+    p('    _keys_held.discard(k)');
+    p('    if k in ("Up","Down"): _joy_y=127');
+    p('    if k in ("Left","Right"): _joy_x=127');
+    p('def _bind_keys(win):');
+    p('    win.bind_all("<KeyPress>",_on_key_press)');
+    p('    win.bind_all("<KeyRelease>",_on_key_release)');
+    p('    win.focus_set()');
+  }
+  if(hasPdl) p('def _pdl(n): n=int(n); return _joy_x if n==0 else _joy_y');
+  if(hasStick){
+    p('def _gw_stick(n):');
+    p('    n=int(n) & 3');
+    p('    return _joy_x if n in (0,2) else _joy_y');
+    p('def _gw_strig(n):');
+    p('    n=int(n)');
+    p('    # buttons - use key state for Return/Space');
+    p('    if n in (0,1): return -1 if "Return" in _keys_held else 0');
+    p('    if n in (2,3): return -1 if "space" in _keys_held else 0');
+    p('    return 0');
+  }
+
+  // Memory map
+  p('_mem={}; _mem[222]=0; _mem[218]=0; _mem[219]=0');
+  p('def _peek(a): return _mem.get(int(a),0)');
+  p('def _poke(a,v): _mem[int(a)]=int(v)&0xFF');
+
+  // Keyboard non-blocking (hardware PEEK simulation)
+  if(hasKb){
+    p('');
+    p('# ── Non-blocking keyboard (PEEK -16384 / 49152) ────────');
+    p('_kb_queue = queue.Queue()');
+    p('_kb_last  = 0');
+    p('def _kb_listener():');
+    p('    import tty, termios, sys');
+    p('    fd=sys.stdin.fileno()');
+    p('    old=termios.tcgetattr(fd)');
+    p('    try:');
+    p('        tty.setraw(fd)');
+    p('        while True:');
+    p('            ch=sys.stdin.read(1)');
+    p('            _kb_queue.put(ord(ch)|0x80)');
+    p('    finally:');
+    p('        termios.tcsetattr(fd,termios.TCSADRAIN,old)');
+    p('_kb_thread=threading.Thread(target=_kb_listener,daemon=True)');
+    p('_kb_thread.start()');
+    p('def _kb_peek():');
+    p('    global _kb_last');
+    p('    try: _kb_last=_kb_queue.get_nowait()');
+    p('    except queue.Empty: pass');
+    p('    return _kb_last');
+    p('def _kb_clear():');
+    p('    global _kb_last; _kb_last=0');
+    p('    while not _kb_queue.empty():');
+    p('        try: _kb_queue.get_nowait()');
+    p('        except: break');
+    p('    return 0');
+    p('_mem[-16384]=0; _mem[49152]=0');
+  }
+
+  // Speaker sound
+  if(hasSpeaker){
+    p('');
+    p('# ── Speaker click sound (POKE -16336 / 49200) ──────────');
+    p('def _speaker_click():');
+    p('    try:');
+    p('        import simpleaudio as sa');
+    p('        import numpy as np');
+    p('        sr=44100; dur=0.01');
+    p('        t=np.linspace(0,dur,int(sr*dur),False)');
+    p('        wave=(np.sin(2*np.pi*800*t)*32767).astype(np.int16)');
+    p('        sa.play_buffer(wave,1,2,sr)');
+    p('    except ImportError:');
+    p('        try:');
+    p('            import winsound');
+    p('            winsound.Beep(800,10)');
+    p('        except: pass  # speaker click (install simpleaudio for audio)');
+  }
+
+  // GET
+  if(hasGet){
+    p('');
+    p('def _get():');
+    p('    fd=sys.stdin.fileno(); old=termios.tcgetattr(fd)');
+    p('    try: tty.setraw(fd); return sys.stdin.read(1)');
+    p('    finally: termios.tcsetattr(fd,termios.TCSADRAIN,old)');
+  }
+  // _gw_input (INPUT$(n) — read n chars without echo)
+  p('def _gw_input(n=1):');
+  p('    try:');
+  p('        import tty,termios,sys');
+  p('        fd=sys.stdin.fileno();old=termios.tcgetattr(fd)');
+  p('        try: tty.setraw(fd); return sys.stdin.read(n)');
+  p('        finally: termios.tcsetattr(fd,termios.TCSADRAIN,old)');
+  p('    except: return input("")[:n]');
+  // _gw_inkey (INKEY$ — non-blocking single key)
+  p('def _gw_inkey():');
+  p('    global _inkey_cached');
+  if(needsTk||hasPdl||hasStick||hasInkey||hasKbPeek){
+    p('    # Process pending tkinter events to update _inkey_cached');
+    p('    try:');
+    p('        if _tk_root: _tk_root.update()');
+    p('    except: pass');
+    p('    v=_inkey_cached; _inkey_cached=""; return v');
+  } else {
+    p('    try:');
+    p('        import tty,termios,sys,select');
+    p('        fd=sys.stdin.fileno();old=termios.tcgetattr(fd)');
+    p('        try:');
+    p('            tty.setraw(fd)');
+    p('            if select.select([sys.stdin],[],[],0)[0]: return sys.stdin.read(1)');
+    p('            return ""');
+    p('        finally: termios.tcsetattr(fd,termios.TCSADRAIN,old)');
+    p('    except: return ""');
+  }
+
+  // CALL dispatch
+  p('');
+  p('# ── CALL ROM routine dispatcher ─────────────────────────');
+      p('def _call_usr(addr):');
+  p('    a=int(addr)');
+  p('    if a in (-936,62464): print("\\033[2J\\033[H",end=""); return');
+  p('    if a in (-868,64668): print("\\033[2K\\033[G",end=""); return');
+  p('    if a in (-922,64614): print("\\033[H",end=""); return');
+  p('    try:');
+  p('        if a==54915: _gr_init("lo"); return');
+  p('        if a in (57350,57352): _gr_init("hi"); return');
+  p('        if a==62454: _gr_init("hi2"); return');
+  p('        if a in (62450,): _gr_text(); return');
+  p('    except NameError: pass');
+  p('    _mem[a&0xFFFF]=0');
+  p('    if a in (-936,62464):');
+  p('        try: _gr_text()');
+  p('        except NameError: pass');
+  p('        import os; os.system("clear 2>/dev/null || cls 2>/dev/null"); return');
+  p('    if a in (62450,):');
+  p('        try: _gr_text(); return');
+  p('        except NameError: pass');
+  p('    if a in (54915,):');
+  p('        try: _gr_init("lo"); return');
+  p('        except NameError: pass');
+  p('    if a in (57350,57352):');
+  p('        try: _gr_init("hi"); return');
+  p('        except NameError: pass');
+  p('    if a in (62454,):');
+  p('        try: _gr_init("hi2"); return');
+  p('        except NameError: pass');
+  p('    if a in (-868,64668): print("\\033[2K\\033[G",end=""); return');
+  p('    if a in (-922,64614): print("\\033[H",end=""); return');
+p('    _mem[a&0xFFFF]=0');
+
+  // DOS 3.3 file I/O
+  if(hasDos||hasFileInput){
+    p('');
+    p('# ── DOS 3.3 File I/O ────────────────────────────────────');
+    p('_dos_file = None; _dos_mode = "r"');
+    p('def _dos_open(fname, mode):');
+    p('    global _dos_file, _dos_mode');
+    p('    _dos_mode=mode');
+    p('    try: _dos_file=open(fname,mode)');
+    p('    except: _dos_file=None');
+    p('def _dos_close():');
+    p('    global _dos_file');
+    p('    if _dos_file: _dos_file.close(); _dos_file=None');
+    p('def _dos_set_read():');
+    p('    global _dos_mode; _dos_mode="r"');
+    p('def _dos_input_str():');
+    p('    if _dos_file and _dos_mode=="r":');
+    p('        line=_dos_file.readline()');
+    p('        return line.strip() if line else ""');
+    p('    return input("? ")');
+    p('def _dos_input_num():');
+    p('    s=_dos_input_str()');
+    p('    try: return float(s)');
+    p('    except: return 0.0');
+    p('def _dos_print(val):');
+    p('    if _dos_file and _dos_mode in ("w","a"):');
+    p('        _dos_file.write(str(val)+"\\n")');
+    p('    else: print(val)');
+  }
+
+  // Stop/end
+  p('def _strRep(n,c):');
+  p('    c=chr(int(c)) if isinstance(c,(int,float)) else str(c)[0]');
+  p('    return c*int(n)');
+  p('def _stop(line): print(f"\\nBREAK IN {line}"); sys.exit(0)');
+  p('def _end():');
+  if(needsTk){p('    if _tk_root:');p('        try: _tk_root.mainloop()');p('        except: pass');}
+  p('    sys.exit(0)');
+
+  // Graphics runtime
+  // Detect if GW-BASIC LINE/PSET/LOCATE/COLOR used
+  var hasGwGfx=has(/\bLINE\s*[-(]/)||has(/\bPSET\b/)||has(/\bCIRCLE\b/);
+  var hasLocate=has(/\bLOCATE\b/);
+  var hasGwColor=has(/^COLOR\s+\d/m);
+  var needsTkOrGw=needsTk||hasGwGfx;
+
+  if(needsTkOrGw){
+    p('');p('# ── GW-BASIC line graphics (_gw_line/_gw_pset) ─────────');
+    p('_gw_cx=0; _gw_cy=0');
+    p('_GW_COLORS=["#000000","#0000AA","#00AA00","#00AAAA","#AA0000","#AA00AA","#AA5500","#AAAAAA","#555555","#5555FF","#55FF55","#55FFFF","#FF5555","#FF55FF","#FFFF55","#FFFFFF"]');
+    p('def _gw_line(x1,y1,x2,y2,color=None,filled=False):');
+    p('    global _gw_cx,_gw_cy,_tk_root,_tk_canvas');
+    p('    if _tk_root is None: _tk_root=tk.Tk(); _tk_root.title("GW-BASIC Graphics"); _bind_keys(_tk_root)');
+    p('    if _tk_canvas is None:');
+    p('        _tk_canvas=tk.Canvas(_tk_root,width=640,height=400,bg="#000000")');
+    p('        _tk_canvas.pack(); _tk_root.update()');
+    p('    col=_GW_COLORS[int(color)%16] if color is not None else "#FFFFFF"');
+    p('    if filled:');
+    p('        _tk_canvas.create_rectangle(min(x1,x2)*2,min(y1,y2)*2,max(x1,x2)*2,max(y1,y2)*2,fill=col,outline=col)');
+    p('    else:');
+    p('        _tk_canvas.create_line(x1*2,y1*2,x2*2,y2*2,fill=col)');
+    p('    _gw_cx=int(x2); _gw_cy=int(y2); _tk_root.update()');
+    p('def _gw_pset(x,y,color=None):');
+    p('    global _gw_cx,_gw_cy');
+    p('    _gw_line(x,y,x,y,color,False)');
+    p('    _gw_cx=int(x); _gw_cy=int(y)');
+  }
+
+  if(needsTk){
+    p('');p('# ── Apple II Graphics (tkinter) ─────────────────────────');
+    p('_tk_root=None; _tk_canvas=None; _gr_mode=None');
+    p('_gr_lo_color=0; _gr_hi_color=3; _gr_cx=0; _gr_cy=0; _gr_scale=1; _gr_rot=0');
+    p('_LO_PAL=["#000000","#8C2020","#442098","#CC28B8","#006840","#808080","#229CF0","#88C0FF","#885000","#F07800","#808080","#FFA898","#10F010","#F0F018","#48D8C8","#FFFFFF"]');
+    p('_HI_PAL=["#000000","#00FF00","#FF00FF","#FFFFFF","#000000","#FF6600","#0066FF","#FFFFFF"]');
+    p('def _gr_init(mode):');
+    p('    global _tk_root,_tk_canvas,_gr_mode');
+    p('    if _tk_root is None: _tk_root=tk.Tk(); _tk_root.title("Apple ][ Graphics")');
+    p('    if _tk_canvas: _tk_canvas.destroy()');
+    p('    _gr_mode=mode');
+    p('    if mode=="lo": _tk_canvas=tk.Canvas(_tk_root,width=480,height=480,bg="#000000")');
+    p('    else: _tk_canvas=tk.Canvas(_tk_root,width=560,height=384,bg="#000000")');
+    p('    _tk_canvas.pack(); _tk_root.update()');
+    p('def _gr_text():');
+    p('    global _tk_canvas');
+    p('    if _tk_canvas: _tk_canvas.destroy(); _tk_canvas=None');
+    p('    if _tk_root: _tk_root.update()');
+    p('def _gr_color(n): global _gr_lo_color; _gr_lo_color=int(n)%16');
+    p('def _gr_hcolor(n): global _gr_hi_color; _gr_hi_color=int(n)%8');
+    p('def _gr_plot(x,y):');
+    p('    if _tk_canvas is None: _gr_init("lo")');
+    p('    _tk_canvas.create_rectangle(x*12,y*12,x*12+11,y*12+11,fill=_LO_PAL[_gr_lo_color],outline=""); _tk_root.update()');
+    p('def _gr_vlin(y1,y2,x):');
+    p('    if _tk_canvas is None: _gr_init("lo")');
+    p('    col=_LO_PAL[_gr_lo_color]');
+    p('    for y in range(min(y1,y2),max(y1,y2)+1): _tk_canvas.create_rectangle(x*12,y*12,x*12+11,y*12+11,fill=col,outline="")');
+    p('    _tk_root.update()');
+    p('def _gr_hlin(x1,x2,y):');
+    p('    if _tk_canvas is None: _gr_init("lo")');
+    p('    col=_LO_PAL[_gr_lo_color]');
+    p('    for x in range(min(x1,x2),max(x1,x2)+1): _tk_canvas.create_rectangle(x*12,y*12,x*12+11,y*12+11,fill=col,outline="")');
+    p('    _tk_root.update()');
+    p('def _gr_hmove(x,y):');
+    p('    global _gr_cx,_gr_cy');
+    p('    if _tk_canvas is None: _gr_init("hi")');
+    p('    _tk_canvas.create_rectangle(x*2,y*2,x*2+1,y*2+1,fill=_HI_PAL[_gr_hi_color],outline="")');
+    p('    _gr_cx=x; _gr_cy=y; _tk_root.update()');
+    p('def _gr_hline_to(x2,y2):');
+    p('    global _gr_cx,_gr_cy');
+    p('    if _tk_canvas is None: _gr_init("hi")');
+    p('    _tk_canvas.create_line(_gr_cx*2,_gr_cy*2,x2*2,y2*2,fill=_HI_PAL[_gr_hi_color],width=1)');
+    p('    _gr_cx=x2; _gr_cy=y2; _tk_root.update()');
+    if(hasDraw){
+      p('');
+      p('# ── Shape table DRAW/XDRAW ──────────────────────────────');
+      p('# Shape vectors decoded from _mem[] POKE data at runtime');
+      p('_SHAPE_DX=[0,1,1,1,0,-1,-1,-1]');
+      p('_SHAPE_DY=[-1,-1,0,1,1,1,0,-1]');
+      p('def _gr_draw_shape(idx,cx,cy,xor_mode,scale,rot):');
+      p('    global _tk_canvas');
+      p('    if _tk_canvas is None: _gr_init("hi")');
+      p('    # Find shape table base from _mem[232]+_mem[233]*256 (SHPTBL pointer)');
+      p('    base=_mem.get(232,0)+_mem.get(233,0)*256');
+      p('    if base==0: base=768  # default to $300');
+      p('    # Read offset for shape idx');
+      p('    off_lo=_mem.get(base+idx*2-1,0); off_hi=_mem.get(base+idx*2,0)');
+      p('    saddr=base+off_lo+off_hi*256 if (off_lo+off_hi)>0 else base+idx*10');
+      p('    x,y=float(cx),float(cy); col=_HI_PAL[_gr_hi_color]');
+      p('    s=max(1,scale)');
+      p('    for i in range(128):');
+      p('        b=_mem.get(saddr+i,0)');
+      p('        if b==0: break');
+      p('        d1=b&7; plot1=(b&64)!=0');
+      p('        x+=_SHAPE_DX[d1]*s; y+=_SHAPE_DY[d1]*s');
+      p('        if plot1:');
+      p('            if xor_mode: _tk_canvas.create_rectangle(int(x)*2,int(y)*2,int(x)*2+1,int(y)*2+1,fill="#000000",outline="")');
+      p('            else: _tk_canvas.create_rectangle(int(x)*2,int(y)*2,int(x)*2+1,int(y)*2+1,fill=col,outline="")');
+      p('        d2=(b>>3)&7');
+      p('        if d2!=0:');
+      p('            plot2=(b&32)!=0');
+      p('            x+=_SHAPE_DX[d2]*s; y+=_SHAPE_DY[d2]*s');
+      p('            if plot2:');
+      p('                if xor_mode: _tk_canvas.create_rectangle(int(x)*2,int(y)*2,int(x)*2+1,int(y)*2+1,fill="#000000",outline="")');
+      p('                else: _tk_canvas.create_rectangle(int(x)*2,int(y)*2,int(x)*2+1,int(y)*2+1,fill=col,outline="")');
+      p('        if(b&128)!=0: break');
+      p('    _tk_root.update()');
+    }
+  }
+
+  if(hasData){p('');
+    var dl=dataValues.map(function(v){if(/^"/.test(v))return v;var n=parseFloat(v);return isNaN(n)?JSON.stringify(v.trim()):String(n);});
+    p('_data=['+dl.join(', ')+']'); p('_dp=0');}
+  if(hasOnerr){p('');p('_onerr=None;_err_flag=False;_resume_next_line=0;_err_resume=0;_err_resume=0');}
+
+  p(''); p('_line='+numbered[0].num);
+  p('_ret=[]');
+  p('_lnums=['+lineNums.join(',')+']');
+  p('_lmap={'+lineNums.map(function(n,i){return n+':'+i;}).join(',')+'}');
+  var nextLineOf={};
+  for(var i=0;i<numbered.length-1;i++)nextLineOf[numbered[i].num]=numbered[i+1].num;
+
+  // Build line-number to index map
+  var _lmap_arr = {};
+  for(var _lmi=0;_lmi<numbered.length;_lmi++) _lmap_arr[numbered[_lmi].num]=_lmi;
+
+  var emitLines=function(ind){
+    for(var i=0;i<numbered.length;i++){
+      var num=numbered[i].num,stmt=numbered[i].stmt,stmts=splitColon(stmt);
+      p(ind+'if _line=='+num+':');
+      if(hasTrace)p(ind+'    if _trace: print(f"['+num+']",end=" ")');
+      if(hasResNext)p(ind+'    _resume_next_line='+(nextLineOf[num]||num));
+      ctx._forLineNum = num;  // Tell convStmtPy which line we're on
+      var inner=[];
+      stmts.forEach(function(s){inner.push.apply(inner,convStmtPy(s,ind+'    ',ctx));});
+      if(!inner.length)inner.push(ind+'    pass');
+      var nextNum=i+1<numbered.length?numbered[i+1].num:num;
+      // Resolve __FORBODY_vk_ATLINE_N__ placeholders
+      inner=inner.map(function(l){
+        return l.replace(/__FORBODY_([a-z0-9_]+)_ATLINE_(\d+)__/g,function(_,vk,forLine){
+          // Body line = the line after the FOR at forLine
+          var forIdx=_lmap_arr[parseInt(forLine)];
+          var bodyNum=forIdx!==undefined&&forIdx+1<numbered.length?numbered[forIdx+1].num:nextNum;
+          return String(bodyNum);
+        });
+      });
+      inner.forEach(function(l){p(l);});
+      var lastRaw=stmts[stmts.length-1].trim().toUpperCase();
+      // Only treat as jump if it's an unconditional jump or ON..GOTO etc.
+      // IF with non-GOTO body still needs to advance _line afterward.
+      var isUncondJump=(/^(GOTO|GOSUB|RETURN|RESUME|END|STOP)\b/.test(lastRaw)||/^ON\s+(?!ERROR)/.test(lastRaw));
+      var isIfWithGoto=/^IF\b/.test(lastRaw) && /\bGOTO\s+\d+$|\bTHEN\s+\d+$|\bTHEN\s+GOTO/.test(lastRaw);
+      var isNext=/^NEXT\b/.test(lastRaw);
+      // Always emit _line advance (NEXT handles its own; IF with non-GOTO needs advance)
+      if(!isUncondJump){
+        if(i+1<numbered.length) p(ind+'    _line='+numbered[i+1].num);
+        else p(ind+'    break');
+      }
+    }
+  };
+
+  if(hasOnerr){
+    p('while True:');p('    try:');p('        while True:');p('            if _line not in _lmap: break');
+    emitLines('            ');
+    p('        break');
+    p('    except SystemExit: raise');
+    p('    except Exception as _e:');
+    p('        if _onerr is not None: _mem[222]=255;_err_flag=True;_err_resume=_resume_next_line;_line=_onerr');
+    p('        else: raise');
+  } else {
+    p('while True:');p('    if _line not in _lmap: break');emitLines('    ');
+  }
+  if(warnings.length){p('');p('# ── Conversion notes ──');warnings.forEach(function(w){p('# \u26a0  '+w);});}
+  return{code:L.join('\n'),warnings:warnings};
+}
+
+// ═══════════════════════════════════════════════════════════
+// HTML/JS CONVERTER (Applesoft)
+// ═══════════════════════════════════════════════════════════
+function exprConvJS(e,fnDefs) {
+  e=e.trim();
+  e=e.replace(/\bINT\s*\(/gi,'Math.trunc('); e=e.replace(/\bABS\s*\(/gi,'Math.abs(');
+  e=e.replace(/\bSGN\s*\(/gi,'_sgn(');       e=e.replace(/\bSQR\s*\(/gi,'Math.sqrt(');
+  e=e.replace(/\bSIN\s*\(/gi,'Math.sin(');   e=e.replace(/\bCOS\s*\(/gi,'Math.cos(');
+  e=e.replace(/\bTAN\s*\(/gi,'Math.tan(');   e=e.replace(/\bATN\s*\(/gi,'Math.atan(');
+  e=e.replace(/\bEXP\s*\(/gi,'Math.exp(');   e=e.replace(/\bLOG\s*\(/gi,'Math.log(');
+  e=e.replace(/\bRND\s*\(\s*0\s*\)/gi,'_rnd(0)');
+  e=e.replace(/\bRND\s*\(([^)]+)\)/gi,function(_,a){return '_rnd('+exprConvJS(a,fnDefs)+')';});
+  e=e.replace(/\bRND\b(?!\s*\()/gi,'_rnd(1)');  // bare RND (GW-BASIC)
+  e=e.replace(/\bLEN\s*\(/gi,'_len(');       e=e.replace(/\bMID\$\s*\(/gi,'_midS(');
+  e=e.replace(/\bLEFT\$\s*\(/gi,'_leftS('); e=e.replace(/\bRIGHT\$\s*\(/gi,'_rightS(');
+  e=e.replace(/\bSTR\$\s*\(/gi,'String(');   e=e.replace(/\bVAL\s*\(/gi,'parseFloat(');
+  e=e.replace(/\bCHR\$\s*\(/gi,'_chrS(');   e=e.replace(/\bASC\s*\(/gi,'_asc(');
+  e=e.replace(/\bSPC\s*\(/gi,'_spc(');       e=e.replace(/\bTAB\s*\(/gi,'_tab(');
+  e=e.replace(/\bSCRN\s*\(/gi,'_scrn(');     e=e.replace(/\bPDL\s*\(/gi,'_pdl(');  e=e.replace(/\bSTICK\s*\(/gi,'_stick(');  e=e.replace(/\bSTRIG\s*\(/gi,'_strig(');
+  e=e.replace(/\bFRE\s*\(/gi,'_fre(');       e=e.replace(/\bUSR\s*\(/gi,'_usr(');
+  // Special PEEK addresses
+  e=e.replace(/\bPEEK\s*\(\s*(-?\d+)\s*\)/gi,function(_,addr){
+    var key=addr.trim();
+    return PEEK_SPECIAL_JS[key]||('_peek('+key+')');
+  });
+  e=e.replace(/\bPEEK\s*\(/gi,'_peek(');
+  e=e.replace(/\bINKEY\$\b/gi,'_inkeyCached');
+  e=e.replace(/\bINPUT\$\s*\(([^)]+)\)/gi,function(_,n){return 'await _gwInput('+exprConvJS(n,fnDefs)+')';});
+  e=e.replace(/\bSTRING\$\s*\(([^,)]+),([^)]+)\)/gi,function(_,n,c){
+    var cn=exprConvJS(c.trim(),fnDefs), nn=exprConvJS(n.trim(),fnDefs);
+    return '_strRep('+nn+','+cn+')';
+  });
+  e=e.replace(/\bPOS\s*\(\s*\d+\s*\)/gi,'0');
+  e=e.replace(/\bCSRLIN\b/gi,'1');
+  e=e.replace(/\bTIMER\b/gi,'(Date.now()%86400000/1000)');
+  e=e.replace(/\bFN\s+([A-Za-z][A-Za-z0-9]*)\s*\(([^)]*)\)/gi,function(_,nm,arg){return '_fn_'+nm.toLowerCase()+'('+exprConvJS(arg,fnDefs)+')';});
+  e=e.replace(/([A-Za-z][A-Za-z0-9]*)\%/g,function(_,v){return '_i_'+v.toLowerCase();});
+  e=e.replace(/([A-Za-z][A-Za-z0-9]*)\$/g,function(_,v){return '_s_'+v.toLowerCase();});
+  e=e.replace(/<>/g,'!=='); e=e.replace(/\^/g,'**');
+  // String-aware AND/OR/NOT replacement
+  var _lo='', _loS=false, _li=0;
+  while(_li<e.length){
+    if(e[_li]==='"'){_loS=!_loS; _lo+=e[_li++]; continue;}
+    if(_loS){_lo+=e[_li++]; continue;}
+    var _lm=e.slice(_li).match(/^(AND|OR|NOT)\b/i);
+    if(_lm){
+      var _op=_lm[1].toUpperCase();
+      _lo+=(_op==='AND'?'&&':_op==='OR'?'||':'!');
+      _li+=_lm[1].length;
+    } else {
+      _lo+=e[_li++];
+    }
+  }
+  e=_lo;
+  // Lowercase identifiers, but NOT string literal content
+  var _res='', _inS=false, _ii=0;
+  while(_ii<e.length){
+    if(e[_ii]==='"'){_inS=!_inS; _res+=e[_ii++]; continue;}
+    if(_inS){_res+=e[_ii++]; continue;}
+    // Match any identifier - preserve mixed-case (JS), lowercase all-caps (BASIC)
+    var _idM=e.slice(_ii).match(/^([A-Za-z_][A-Za-z0-9_]*)/);
+    if(_idM){
+      var _idX=_idM[1];
+      // If identifier contains any lowercase letter, it's JS-style (preserve as-is)
+      if(/[a-z]/.test(_idX)){
+        _res+=_idX;
+      } else {
+        // All uppercase (or underscores/digits) - BASIC variable -> lowercase
+        var _lc=_idX.toLowerCase();
+        if(/^(in|is|do|if|for|var|let|new|try|class|return|function|throw|typeof|while|delete|finally|switch|default|break|case|continue|debugger|instanceof|void|with|yield|async|await)$/.test(_lc)){
+          _res+='_v_'+_lc;
+        } else {
+          _res+=_lc;
+        }
+      }
+      _ii+=_idX.length;
+    }
+    else{_res+=e[_ii++];}
+  }
+  e=_res;
+  // Convert array-like var(args) to var[args], string-aware, handles 2D via ][
+  var _res2='', _inS2=false, _pi=0;
+  while(_pi<e.length){
+    if(e[_pi]==='"'){_inS2=!_inS2; _res2+=e[_pi++]; continue;}
+    if(_inS2){_res2+=e[_pi++]; continue;}
+    var _im=e.slice(_pi).match(/^([a-z_][a-z0-9_]*)\(/i);
+    if(_im){
+      var _id=_im[1];
+      var _prevCh = _res2.length>0 ? _res2.charAt(_res2.length-1) : '';
+      var _isMethod = _prevCh==='.';  // obj.method() - preserve
+      // _s_, _i_ prefixes are BASIC string/integer array-eligible variables
+      var _isBasicVar = /^_[si]_/.test(_id);
+      var _isFn = _isMethod || (!_isBasicVar && _id.charAt(0)==='_') || _id==='Math' || _id==='String' || _id==='parseFloat' || _id==='await' || _id==='Date' || _id==='Number' || _id==='Array' || _id==='Object' || _id==='Boolean' || _id==='JSON';
+      if(_isFn){
+        _res2+=_id;
+        _pi+=_id.length;
+        continue;
+      }
+      if(!_isFn){
+        var _dpos=_pi+_id.length;
+        var _dp=1, _ci=_dpos+1, _iS=false;
+        while(_ci<e.length&&_dp>0){
+          var _ch=e[_ci];
+          if(_ch==='"')_iS=!_iS;
+          else if(!_iS){
+            if(_ch==='(')_dp++;
+            else if(_ch===')')_dp--;
+            if(_dp===0)break;
+          }
+          _ci++;
+        }
+        if(_dp===0){
+          var _inner=e.slice(_dpos+1,_ci);
+          var _fin='', _idp=0, _siS=false;
+          for(var _k=0;_k<_inner.length;_k++){
+            var _c2=_inner[_k];
+            if(_c2==='"')_siS=!_siS;
+            if(!_siS){
+              if(_c2==='('||_c2==='[')_idp++;
+              else if(_c2===')'||_c2===']')_idp--;
+              if(_c2===','&&_idp===0){_fin+='][';continue;}
+            }
+            _fin+=_c2;
+          }
+          _res2+=_id+'['+_fin+']';
+          _pi=_ci+1;
+          continue;
+        }
+      }
+    }
+    _res2+=e[_pi++];
+  }
+  e=_res2;
+  return e;
+}
+
+function fixJSCmp(e){return e.replace(/([^=!<>])=([^=])/g,'$1===$2');}
+
+function buildJSPrint(args,fnDefs){
+  if(args.trim()==='')return['_print("")'];
+  var trailSemi=/;\s*$/.test(args),trailComma=/,\s*$/.test(args);
+  var parts=[],cur='',inStr=false,depth=0;
+  for(var i=0;i<args.length;i++){var ch=args[i];
+    if(ch==='"')inStr=!inStr;
+    if(!inStr){if(ch==='('||ch==='[')depth++;if(ch===')'||ch===']')depth--;}
+    if(!inStr&&depth===0&&(ch===';'||ch===',')){if(cur.trim())parts.push(cur.trim());cur='';}
+    else cur+=ch;}
+  if(cur.trim())parts.push(cur.trim());
+  var jp=parts.map(function(p){return 'String('+exprConvJS(p,fnDefs)+')';}).join('+');
+  if(trailSemi)return['_printNoNL('+(jp||'""')+')'];
+  if(trailComma)return['_printTab('+(jp||'""')+')'];
+  return['_print('+(jp||'""')+')'];
+}
+
+function convStmtJS(stmt,ind,ctx){
+  var warnings=ctx.warnings,fnDefs=ctx.fnDefs;
+  stmt=stmt.trim();if(!stmt)return[];
+  var out=[],E=function(x){return exprConvJS(x,fnDefs);},EC=function(x){return fixJSCmp(E(x));};
+
+  if(/^REM\b/i.test(stmt)||stmt.startsWith("'")){out.push(ind+'// '+stmt.replace(/^REM\s*/i,'').replace(/^'/,''));return out;}
+  if(/^END$/i.test(stmt)){out.push(ind+'_end(); return;');return out;}
+  if(/^STOP$/i.test(stmt)){out.push(ind+'_stop(_line); return;');return out;}
+  if(/^CONT$/i.test(stmt)){out.push(ind+'// CONT');return out;}
+
+  // DOS 3.3
+  var dosOut=dosCmdJS(stmt,ind,warnings);
+  if(dosOut)return dosOut;
+
+  var prM=stmt.match(/^(?:PRINT|\?)\s*(.*)/is);
+  if(prM){buildJSPrint(prM[1],fnDefs).forEach(function(l){out.push(ind+l+';');});return out;}
+
+  var inM=stmt.match(/^INPUT\s+(.+)/i);
+  if(inM){var rest=inM[1].trim(),prompt='"? "';
+    var pm=rest.match(/^"([^"]*)"\s*[;,]\s*(.+)/);
+    if(pm){prompt='"'+pm[1]+'"+"? "';rest=pm[2];}
+    rest.split(',').forEach(function(v){var vt=v.trim(),pv=E(vt),isStr=/\$$/.test(vt);
+      out.push(isStr?ind+pv+' = await _input('+prompt+');':ind+pv+' = parseFloat(await _input('+prompt+'));');});
+    return out;}
+
+  var getM=stmt.match(/^GET\s+(.+)/i);
+  if(getM){out.push(ind+E(getM[1].trim())+' = await _get();');return out;}
+
+  var readM=stmt.match(/^READ\s+(.+)/i);
+  if(readM){readM[1].split(',').forEach(function(v){var vt=v.trim(),pv=E(vt),isStr=/\$/.test(vt);
+    out.push(isStr?ind+pv+' = String(_data[_dp++]);':ind+pv+' = parseFloat(_data[_dp++]);');});return out;}
+
+  if(/^RESTORE$/i.test(stmt)){out.push(ind+'_dp=0;');return out;}
+  if(/^DATA\b/i.test(stmt)){out.push(ind+'// DATA '+stmt.slice(4).trim());return out;}
+
+  var defM=stmt.match(/^DEF\s+FN\s+([A-Za-z][A-Za-z0-9]*)\s*\(([^)]*)\)\s*=\s*(.+)/i);
+  if(defM){var nm=defM[1].toLowerCase(),param=E(defM[2].trim()),body=E(defM[3]);fnDefs.push(nm);
+    out.push(ind+'function _fn_'+nm+'('+param+'){return '+body+';}');return out;}
+
+  // Assignment (JS) — depth-aware = finder
+  var _letSkipJ=/^(FOR|IF|DEF|COLOR|HCOLOR|SCALE|ROT|SPEED|PRINT|INPUT|LET\s*$)\b/i.test(stmt)&&!/^LET\s+[A-Za-z]/i.test(stmt);
+  if(!_letSkipJ){
+    var _letDepthJ=0, _letEqJ=-1;
+    var _letStartJ=stmt.match(/^LET\s+/i)?stmt.match(/^LET\s+/i)[0].length:0;
+    for(var _ciJ=_letStartJ;_ciJ<stmt.length;_ciJ++){
+      var _ccJ=stmt[_ciJ];
+      if(_ccJ==='('||_ccJ==='[')_letDepthJ++;
+      else if(_ccJ===')'||_ccJ===']')_letDepthJ--;
+      else if(_ccJ==='='&&_letDepthJ===0&&(_ciJ===0||'=!<>'.indexOf(stmt[_ciJ-1])<0)&&(_ciJ+1>=stmt.length||stmt[_ciJ+1]!=='=')){
+        _letEqJ=_ciJ; break;
+      }
+    }
+    if(_letEqJ>_letStartJ){
+      var _lhsRawJ=stmt.slice(_letStartJ,_letEqJ).trim();
+      var _rhsRawJ=stmt.slice(_letEqJ+1).trim();
+      if(/^[A-Za-z]/.test(_lhsRawJ)){
+        out.push(ind+E(_lhsRawJ)+' = '+E(_rhsRawJ)+';');return out;
+      }
+    }
+  }
+
+  var forM=stmt.match(/^FOR\s+([A-Za-z][A-Za-z0-9]*%?)\s*=\s*(.+?)\s+TO\s+(.+?)(?:\s+STEP\s+(.+))?$/i);
+  if(forM){var v=E(forM[1]),s=E(forM[2]),e2=E(forM[3]),st=forM[4]?E(forM[4]):'1';
+    var vk=v.replace(/[^a-z0-9]/g,'_');
+    if(!ctx._forStack)ctx._forStack=[];
+    ctx._forStack.push(v);
+    ctx._lastForVar=v;
+    var _forRestartVal = ctx._forRestartOverride!=null?ctx._forRestartOverride:'__FORBODY_'+vk+'_ATLINE_'+(ctx._curLine||0)+'__';out.push(ind+v+' = '+s+'; _for_end_'+vk+' = '+e2+'; _for_step_'+vk+' = '+st+'; _for_restart_'+vk+' = '+_forRestartVal+';');return out;}
+  var nextJM=stmt.match(/^NEXT(?:\s+([A-Za-z][A-Za-z0-9]*%?))?$/i);
+  if(nextJM){
+    var nv;
+    if(nextJM[1]){
+      nv = E(nextJM[1].trim());
+    } else if(ctx._forStack && ctx._forStack.length){
+      nv = ctx._forStack[ctx._forStack.length-1];
+    } else {
+      nv = ctx._lastForVar;
+    }
+    if(nv){
+      var nvk=nv.replace(/[^a-z0-9_]/g,'_');
+      out.push(ind+nv+' += _for_step_'+nvk+';');
+      out.push(ind+'if((_for_step_'+nvk+' >= 0 && '+nv+' <= _for_end_'+nvk+') || (_for_step_'+nvk+' < 0 && '+nv+' >= _for_end_'+nvk+')){_line=_for_restart_'+nvk+';continue;}');
+      if(ctx._forStack && ctx._forStack.length) ctx._forStack.pop();
+    } else {
+      out.push(ind+'// NEXT without variable (no FOR found)');
+    }
+    return out;
+  }
+
+  var gotoM=stmt.match(/^GOTO\s+(\d+)$/i);
+  if(gotoM){out.push(ind+'_line='+gotoM[1]+'; continue;');return out;}
+
+  // ON ERROR GOTO — must check before ON GOTO to avoid misparse
+  var _onErrEarlyJ=stmt.match(/^ON\s+ERROR\s+GOTO\s+(\d+)$/i);
+  if(_onErrEarlyJ){out.push(ind+'_onerr='+_onErrEarlyJ[1]+';');return out;}
+
+  var onGotoM=stmt.match(/^ON\s+(.+?)\s+GOTO\s+(.+)$/i);
+  if(onGotoM){var tgts=onGotoM[2].split(',').map(function(t){return t.trim();});
+    out.push(ind+'{var _oi=Math.trunc('+E(onGotoM[1])+')-1;');
+    tgts.forEach(function(t,i){out.push(ind+'  '+(i===0?'if':'else if')+'(_oi==='+i+'){_line='+t+';continue;}');});
+    out.push(ind+'}');return out;}
+
+  var onGosubM=stmt.match(/^ON\s+(.+?)\s+GOSUB\s+(.+)$/i);
+  if(onGosubM){var tgts=onGosubM[2].split(',').map(function(t){return t.trim();});
+    out.push(ind+'{var _oi=Math.trunc('+E(onGosubM[1])+')-1;');
+    var _ogNext=ctx._nextLine||'_line+1';tgts.forEach(function(t,i){out.push(ind+'  '+(i===0?'if':'else if')+'(_oi==='+i+'){_ret.push('+_ogNext+');_line='+t+';continue;}');});
+    out.push(ind+'}');return out;}
+
+  var gosubM=stmt.match(/^GOSUB\s+(\d+)$/i);
+  if(gosubM){var _gbNext=ctx._nextLine||'_line+1';out.push(ind+'_ret.push('+_gbNext+'); _line='+gosubM[1]+'; continue;');return out;}
+  if(/^RETURN$/i.test(stmt)){out.push(ind+'_line=_ret.pop(); continue;');return out;}
+  if(/^POP$/i.test(stmt)){out.push(ind+'if(_ret.length)_ret.pop();');return out;}
+
+  // ON ERROR GOTO — must check before ON GOTO (JS)
+  var onerrM=stmt.match(/^ONERR\s+GOTO\s+(\d+)$/i);
+  if(onerrM){out.push(ind+'_onerr='+onerrM[1]+';');return out;}
+  if(/^RESUME\s+NEXT$/i.test(stmt)){out.push(ind+'_line=_errResumeLine; continue;');return out;}
+  if(/^RESUME$/i.test(stmt)){out.push(ind+'// RESUME');return out;}
+
+  // IF THEN [ELSE] — unified string-aware handler (JS)
+  if(/^IF\b/i.test(stmt)){
+    var _ifRestJ=stmt.slice(stmt.match(/^IF\s*/i)[0].length);
+    var _tIdxJ=-1,_iStrJ=false;
+    for(var _tiJ=0;_tiJ<_ifRestJ.length-3;_tiJ++){
+      if(_ifRestJ[_tiJ]==='"')_iStrJ=!_iStrJ;
+      if(!_iStrJ&&_ifRestJ.slice(_tiJ).match(/^THEN\b/i)&&(_tiJ===0||/[\s)]/.test(_ifRestJ[_tiJ-1]))){_tIdxJ=_tiJ;break;}
+    }
+    if(_tIdxJ>=0){
+      var _icondJ=_ifRestJ.slice(0,_tIdxJ).trim();
+      var _iafterJ=_ifRestJ.slice(_tIdxJ+4).trim();
+      var _eIdxJ=-1;_iStrJ=false;
+      for(var _eiJ=0;_eiJ<_iafterJ.length-3;_eiJ++){
+        if(_iafterJ[_eiJ]==='"')_iStrJ=!_iStrJ;
+        if(!_iStrJ&&_iafterJ.slice(_eiJ).match(/^ELSE\b/i)&&(_eiJ===0||/[\s:]/.test(_iafterJ[_eiJ-1]))){_eIdxJ=_eiJ;break;}
+      }
+      out.push(ind+'if('+EC(_icondJ)+'){');
+      var _tbodyJ=_eIdxJ>=0?_iafterJ.slice(0,_eIdxJ).trim():_iafterJ.trim();
+      var _tgonlyJ=_tbodyJ.match(/^(?:GOTO\s+)?(\d+)$/i);
+      if(_tgonlyJ){out.push(ind+'  _line='+_tgonlyJ[1]+'; continue;');}
+      else{splitColon(_tbodyJ).forEach(function(s){convStmtJS(s,ind+'  ',ctx).forEach(function(l){out.push(l);});});}
+      if(_eIdxJ>=0){
+        var _ebodyJ=_iafterJ.slice(_eIdxJ+4).trim();
+        out.push(ind+'}else{');
+        var _egonlyJ=_ebodyJ.match(/^(?:GOTO\s+)?(\d+)$/i);
+        if(_egonlyJ){out.push(ind+'  _line='+_egonlyJ[1]+'; continue;');}
+        else{splitColon(_ebodyJ).forEach(function(s){convStmtJS(s,ind+'  ',ctx).forEach(function(l){out.push(l);});});}
+      }
+      out.push(ind+'}');
+      return out;
+    }
+  }
+  var ifM=stmt.match(/^IF\s+(.+?)\s+THEN\s+(.+)$/i);
+  if(ifM){var then=ifM[2].trim(),gonly=then.match(/^(?:GOTO\s+)?(\d+)$/i);
+    out.push(ind+'if('+EC(ifM[1])+'){');
+    if(gonly)out.push(ind+'  _line='+gonly[1]+'; continue;');
+    else splitColon(then).forEach(function(s){convStmtJS(s,ind+'  ',ctx).forEach(function(l){out.push(l);});});
+    out.push(ind+'}');return out;}
+
+  var ifGotoM=stmt.match(/^IF\s+(.+?)\s+GOTO\s+(\d+)$/i);
+  if(ifGotoM){out.push(ind+'if('+EC(ifGotoM[1])+'){_line='+ifGotoM[2]+';continue;}');return out;}
+
+  var dimM=stmt.match(/^DIM\s+(.+)$/i);
+  if(dimM){var decls=[],cur='',depth=0;
+    (dimM[1]+',').split('').forEach(function(ch){if(ch==='(')depth++;if(ch===')')depth--;if(ch===','&&depth===0){decls.push(cur.trim());cur='';}else cur+=ch;});
+    decls.forEach(function(d){var am=d.match(/([A-Za-z][A-Za-z0-9]*[%$]?)\s*\(([^)]+)\)/i);
+      if(am){var nm=E(am[1]),dims=am[2].split(',').map(function(x){return parseInt(x.trim())+1;});
+        if(dims.length===1)out.push(ind+nm+'=_dimArr('+dims[0]+');');
+        else if(dims.length===2)out.push(ind+nm+'=_dimArr2('+dims[0]+','+dims[1]+');');
+        else out.push(ind+nm+'=_dimArr3('+dims[0]+','+dims[1]+','+dims[2]+');');}});
+    return out;}
+
+  // Graphics
+  if(/^GR$/i.test(stmt)){out.push(ind+"_grInit('lo');");return out;}
+  if(/^HGR2$/i.test(stmt)){out.push(ind+"_grInit('hi2');");return out;}
+  if(/^HGR$/i.test(stmt)){out.push(ind+"_grInit('hi');");return out;}
+  var colorM=stmt.match(/^COLOR\s*=\s*(.+)$/i);
+  if(colorM){out.push(ind+'_grColor(Math.trunc('+E(colorM[1])+'));');return out;}
+  var hcolorM=stmt.match(/^HCOLOR\s*=\s*(.+)$/i);
+  if(hcolorM){out.push(ind+'_grHcolor(Math.trunc('+E(hcolorM[1])+'));');return out;}
+  var scaleM=stmt.match(/^SCALE\s*=\s*(.+)$/i);
+  if(scaleM){out.push(ind+'_grScale=Math.trunc('+E(scaleM[1])+');');return out;}
+  var rotM=stmt.match(/^ROT\s*=\s*(.+)$/i);
+  if(rotM){out.push(ind+'_grRot=Math.trunc('+E(rotM[1])+');');return out;}
+  var plotM=stmt.match(/^PLOT\s+(.+?)\s*,\s*(.+)$/i);
+  if(plotM){out.push(ind+'_grPlot(Math.trunc('+E(plotM[1])+'),Math.trunc('+E(plotM[2])+'));');return out;}
+  var hplotM=stmt.match(/^HPLOT\s+(.+)$/i);
+  if(hplotM){var pts=hplotM[1].split(/\bTO\b/i).map(function(p){return p.trim();});
+    var xy0=pts[0].split(',').map(function(q){return q.trim();});
+    out.push(ind+'_grHmove(Math.trunc('+E(xy0[0])+'),Math.trunc('+E(xy0[1])+'));');
+    for(var i=1;i<pts.length;i++){var xy=pts[i].split(',').map(function(q){return q.trim();});out.push(ind+'_grHlineTo(Math.trunc('+E(xy[0])+'),Math.trunc('+E(xy[1])+'));');}
+    return out;}
+  var vlinM=stmt.match(/^VLIN\s+(.+?)\s*,\s*(.+?)\s+AT\s+(.+)$/i);
+  if(vlinM){out.push(ind+'_grVlin(Math.trunc('+E(vlinM[1])+'),Math.trunc('+E(vlinM[2])+'),Math.trunc('+E(vlinM[3])+'));');return out;}
+  var hlinM=stmt.match(/^HLIN\s+(.+?)\s*,\s*(.+?)\s+AT\s+(.+)$/i);
+  if(hlinM){out.push(ind+'_grHlin(Math.trunc('+E(hlinM[1])+'),Math.trunc('+E(hlinM[2])+'),Math.trunc('+E(hlinM[3])+'));');return out;}
+
+  // DRAW/XDRAW shape table
+  var drawM=stmt.match(/^(X?)DRAW\s+(.+?)\s+AT\s+(.+?)\s*,\s*(.+)$/i);
+  if(drawM){var isX=drawM[1].toUpperCase()==='X';
+    out.push(ind+'_grDrawShape(Math.trunc('+E(drawM[2])+'),Math.trunc('+E(drawM[3])+'),Math.trunc('+E(drawM[4])+'),'+isX+',_grScale,_grRot);');return out;}
+  var draw2M=stmt.match(/^(X?)DRAW\s+(\d+)$/i);
+  if(draw2M){var isX=draw2M[1].toUpperCase()==='X';
+    out.push(ind+'_grDrawShape(Math.trunc('+E(draw2M[2])+'),_grCx,_grCy,'+isX+',_grScale,_grRot);');return out;}
+
+  if(/^TEXT$/i.test(stmt)){out.push(ind+'_grText();');return out;}
+  if(/^HOME$/i.test(stmt)){out.push(ind+'_home();');return out;}
+  if(/^INVERSE$/i.test(stmt)){out.push(ind+'_inverse();');return out;}
+  if(/^NORMAL$/i.test(stmt)){out.push(ind+'_normal();');return out;}
+  if(/^FLASH$/i.test(stmt)){out.push(ind+'_flash();');return out;}
+  var vtabM=stmt.match(/^VTAB\s+(.+)$/i);
+  if(vtabM){out.push(ind+'_vtab(Math.trunc('+E(vtabM[1])+'));');return out;}
+  var htabM=stmt.match(/^HTAB\s+(.+)$/i);
+  if(htabM){out.push(ind+'_htab(Math.trunc('+E(htabM[1])+'));');return out;}
+
+  // POKE with special address handling
+  var pokeM=stmt.match(/^POKE\s+(-?\d+)\s*,\s*(.+)$/i);
+  if(pokeM){var addr=pokeM[1].trim(),val=E(pokeM[2]);
+    if(POKE_SPECIAL_JS[addr])out.push(ind+POKE_SPECIAL_JS[addr]);
+    else out.push(ind+'_poke('+addr+','+val+');');
+    return out;}
+  var pokeExprM=stmt.match(/^POKE\s+(.+?)\s*,\s*(.+)$/i);
+  if(pokeExprM){out.push(ind+'_poke('+E(pokeExprM[1])+','+E(pokeExprM[2])+');');return out;}
+
+  // CALL with ROM lookup
+  var callM=stmt.match(/^CALL\s+(-?\d+)$/i);
+  if(callM){var caddr=callM[1].trim();
+    if(CALL_TABLE_JS[caddr])out.push(ind+CALL_TABLE_JS[caddr]);
+    else out.push(ind+'_callUsr('+caddr+');');
+    return out;}
+  var callExprM=stmt.match(/^CALL\s+(.+)$/i);
+  if(callExprM){out.push(ind+'_callUsr('+E(callExprM[1])+');');return out;}
+
+  if(/^(HIMEM|LOMEM)\s*:/i.test(stmt)||/^SPEED\s*=/i.test(stmt)){out.push(ind+'// '+stmt);return out;}
+  if(/^(PR|IN)#\s*\d+$/i.test(stmt)){out.push(ind+'// '+stmt);return out;}
+  if(/^TRACE$/i.test(stmt)){out.push(ind+'_trace=true;');return out;}
+  if(/^NOTRACE$/i.test(stmt)){out.push(ind+'_trace=false;');return out;}
+  if(/^CLEAR$/i.test(stmt)){out.push(ind+'// CLEAR');return out;}
+  if(/^(NEW|LIST|LOAD|SAVE|RUN)$/i.test(stmt)){out.push(ind+'// '+stmt);return out;}
+
+
+  // LINE command — depth-aware coordinate parser (JS)
+  if(/^LINE\b/i.test(stmt)&&!/^LINE\s+INPUT/i.test(stmt)){
+    var _ls=stmt.replace(/^LINE\s*/i,'');
+    function _fC(s){var d=0;for(var k=0;k<s.length;k++){if(s[k]==='('||s[k]==='[')d++;else if(s[k]===')'||s[k]===']')d--;else if(s[k]===','&&d===0)return k;}return -1;}
+    function _iP(s,from){var start=s.indexOf('(',from||0);if(start<0)return null;var d=0,j=start;while(j<s.length){if(s[j]==='(')d++;else if(s[j]===')')d--;if(d===0)break;j++;}return{inner:s.slice(start+1,j),end:j};}
+    var _jlx1='_gwCx',_jly1='_gwCy',_jlx2,_jly2,_jlcol='null',_jlbf='false';
+    var _lp=0;
+    if(_ls.charAt(0)==='('){var _jp1=_iP(_ls,0);var _jci=_fC(_jp1.inner);if(_jci>=0){_jlx1=E(_jp1.inner.slice(0,_jci).trim());_jly1=E(_jp1.inner.slice(_jci+1).trim());}else{_jlx1=E(_jp1.inner.trim());}_lp=_jp1.end+1;}
+    while(_lp<_ls.length&&(_ls[_lp]===' '||_ls[_lp]==='-'))_lp++;
+    if(_ls.charAt(_lp)==='('){var _jp2=_iP(_ls,_lp);var _jci2=_fC(_jp2.inner);if(_jci2>=0){_jlx2=E(_jp2.inner.slice(0,_jci2).trim());_jly2=E(_jp2.inner.slice(_jci2+1).trim());}else{_jlx2=E(_jp2.inner.trim());_jly2='0';}_lp=_jp2.end+1;}
+    var _jlrest=_ls.slice(_lp).trim();
+    if(_jlrest.charAt(0)===','){_jlrest=_jlrest.slice(1).trim();if(/,\s*BF?\s*$/i.test(_jlrest)){_jlbf='true';_jlrest=_jlrest.replace(/,\s*BF?\s*$/i,'').trim();}if(_jlrest)_jlcol=E(_jlrest);}
+    if(_jlx2!==undefined){out.push(ind+'_gwLine('+_jlx1+','+_jly1+','+_jlx2+','+_jly2+','+_jlcol+','+_jlbf+');');return out;}
+  }
+
+  // ── GW-BASIC / general BASIC (JS target) ────────────────────
+  // CLS
+  if(/^CLS$/i.test(stmt)){out.push(ind+'_home();');return out;}
+
+  // KEY OFF/ON
+  if(/^KEY\s+(OFF|ON)$/i.test(stmt)){out.push(ind+'// KEY '+/OFF|ON/i.exec(stmt)[0]);return out;}
+
+  // SCREEN n
+  var screenJM=stmt.match(/^SCREEN\s+(.+)$/i);
+  if(screenJM){
+    var sm=screenJM[1].trim().split(',')[0].trim();
+    if(sm==='0')out.push(ind+'_grText(); // SCREEN 0');
+    else if(sm==='1')out.push(ind+'_grInit("lo"); // SCREEN 1');
+    else if(sm==='2')out.push(ind+'_grInit("hi"); // SCREEN 2');
+    else out.push(ind+'// SCREEN '+sm);
+    return out;
+  }
+
+  // RANDOMIZE
+  var randJM=stmt.match(/^RANDOMIZE(?:\s+(.+))?$/i);
+  if(randJM){
+    out.push(ind+'// RANDOMIZE (JS Math.random not seedable without library)');
+    return out;
+  }
+
+  // COLOR n (GW-BASIC text color)
+  var colorJM=stmt.match(/^COLOR\s+(\S+)/i);
+  if(colorJM){out.push(ind+'// COLOR '+colorJM[1]+' (text color, approximated)');return out;}
+
+  // LOCATE row,col
+  var locateJM=stmt.match(/^LOCATE(?:\s*(.+))?$/i);
+  if(locateJM){
+    var la=(locateJM[1]||'').split(',');
+    var lr=la[0]&&la[0].trim()?E(la[0].trim()):'null';
+    var lc=la[1]&&la[1].trim()?E(la[1].trim()):'null';
+    out.push(ind+'_locate('+lr+','+lc+');');
+    return out;
+  }
+
+  // LINE INPUT var$
+  var lineInputJM=stmt.match(/^LINE\s+INPUT(?:\s*;)?(?:\s*"([^"]*)"\s*;)?\s*(.+)$/i);
+  if(lineInputJM){
+    var liprompt2=lineInputJM[1]?'"'+lineInputJM[1]+'"':'""';
+    var livar2=E((lineInputJM[2]||'_s_q').trim());
+    out.push(ind+livar2+' = await _input('+liprompt2+');');return out;
+  }
+
+  // LINE handled above by depth-aware parser
+
+  // PSET (x,y) or PSET (x,y),color
+  var psetJM=stmt.match(/^PSET\s*\((.+?),(.+?)\)(?:\s*,\s*(.+))?$/i);
+  if(psetJM){
+    var jpx=E(psetJM[1]),jpy=E(psetJM[2]),jpc=psetJM[3]?E(psetJM[3]):'null';
+    out.push(ind+'_gwPset('+jpx+','+jpy+','+jpc+');');return out;
+  }
+
+  // ON ERROR GOTO n
+
+
+  // Graceful ignore for system/sound commands
+  if(/^(WINDOW|VIEW|PALETTE|OPTION|WIDTH|BEEP|SOUND|PLAY|MOTOR|NOISE)\b/i.test(stmt)){
+    out.push(ind+'// '+stmt.split(' ')[0]);return out;
+  }
+
+  warnings.push('Unrecognised: "'+stmt+'"');
+  out.push(ind+'// TODO: '+stmt);
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HTML/JS CONVERTER — MAIN
+// ═══════════════════════════════════════════════════════════
+function convertToHTML(code){
+  code = preprocessSource(code);
+  var warnings=[],fnDefs=[],numbered=parseNumbered(code);
+  if(!numbered.length)throw new Error('No valid BASIC line numbers found.');
+  var lineNums=numbered.map(function(l){return l.num;});
+  var src=code.toUpperCase(),has=function(re){return re.test(src);};
+  var hasData=has(/\bDATA\b/),hasOnerr=has(/\bONERR\b/),hasResNext=has(/\bRESUME\s+NEXT\b/);
+  var hasInkey=has(/INKEY\$/),hasInputChar=has(/INPUT\$\s*\(/)||has(/\bGET\s+[A-Z]\$/),hasStick=has(/\bSTICK\s*\(|\bSTRIG\s*\(|\bPDL\s*\(/),hasKbPeek=has(/PEEK\s*\(\s*-?(16384|49152)\s*\)/),hasArrowKeys=hasInkey||hasKbPeek||hasStick,hasInteractive=hasArrowKeys||hasInputChar;
+  var hasDos=has(/CHR\$\s*\(\s*4\s*\)/);
+  var dataValues=[];
+  numbered.forEach(function(l){splitColon(l.stmt).forEach(function(s){var t=s.trim();if(/^DATA\b/i.test(t))parseDataLine(t.slice(4).trim()).forEach(function(it){dataValues.push(it);});});});
+  var ctx={warnings:warnings,fnDefs:fnDefs};
+  var nextLineOf={};
+  for(var i=0;i<numbered.length-1;i++)nextLineOf[numbered[i].num]=numbered[i+1].num;
+  var dataLit=hasData?dataValues.map(function(v){if(/^"/.test(v))return v;var n=parseFloat(v);return isNaN(n)?JSON.stringify(v.trim()):String(n);}):[];
+
+  var switchLines=[];
+  var _lmap_arr={};
+  for(var i=0;i<numbered.length;i++)_lmap_arr[numbered[i].num]=i;
+  // Synthetic sub-line IDs for multi-GOSUB lines: num + 0.001, num + 0.002, ...
+  for(var i=0;i<numbered.length;i++){
+    var num=numbered[i].num,stmt=numbered[i].stmt,stmts=splitColon(stmt);
+    ctx._curLine=num;
+    var nextMainLine = i+1<numbered.length?numbered[i+1].num:null;
+    // Check if any statement is a GOSUB/ON-GOSUB that isn't the last one
+    var gosubIdxs = [];
+    for(var si=0;si<stmts.length-1;si++){
+      if(/^GOSUB\s+\d+$/i.test(stmts[si].trim()) || /^ON\s+.+?\s+GOSUB\s+/i.test(stmts[si].trim())){
+        gosubIdxs.push(si);
+      }
+    }
+    // Check if there's a FOR with a body after it on the same line (not as last statement)
+    var forIdx = -1;
+    for(var si=0;si<stmts.length-1;si++){
+      if(/^FOR\s+/i.test(stmts[si].trim())){
+        forIdx = si;
+        break;
+      }
+    }
+    if(gosubIdxs.length===0 && forIdx<0){
+      // No mid-line GOSUB - emit as single case
+      ctx._nextLine=nextMainLine;
+      switchLines.push('        case '+num+':');
+      if(hasResNext)switchLines.push('          _resumeNext='+(nextLineOf[num]||num)+';');
+      var inner=[];stmts.forEach(function(s){inner.push.apply(inner,convStmtJS(s,'          ',ctx));});
+      if(!inner.length)inner.push('          // pass');
+      inner.forEach(function(l){switchLines.push(l);});
+      var lastRaw=stmts[stmts.length-1].trim().toUpperCase();
+      var isJump=(/^(GOTO|GOSUB|RETURN|RESUME|END|STOP)\b/.test(lastRaw)||/^ON\s+(?!ERROR)/.test(lastRaw));
+      if(!isJump){if(nextMainLine!==null)switchLines.push('          _line='+nextMainLine+';');else switchLines.push('          _running=false;');}
+      switchLines.push('          break;');
+    } else {
+      // Multi-GOSUB line OR line with FOR followed by body: split into sub-cases
+      // First determine strategy
+      // Main case runs up through first GOSUB, push synthetic sub-line as resume target
+      var segments = []; // array of {stmts:[], endsWithGosub:bool, endsWithFor:bool}
+      var segStart = 0;
+      for(var si=0;si<=stmts.length-1;si++){
+        if(gosubIdxs.indexOf(si)>=0){
+          segments.push({stmts:stmts.slice(segStart,si+1), endsWithGosub:true});
+          segStart=si+1;
+        } else if(si===forIdx){
+          // FOR mid-line: segment 1 ends at FOR, segment 2 begins at body
+          segments.push({stmts:stmts.slice(segStart,si+1), endsWithFor:true});
+          segStart=si+1;
+        }
+      }
+      if(segStart<stmts.length){
+        segments.push({stmts:stmts.slice(segStart),endsWithGosub:false,endsWithFor:false});
+      }
+      // Assign line numbers: first segment uses 'num', subsequent use num + 0.001*(i+1)
+      segments.forEach(function(seg, si){
+        var segLineNum = si===0 ? num : (num + 0.001*si);
+        var nextSegNum = si+1<segments.length ? (num + 0.001*(si+1)) : nextMainLine;
+        ctx._nextLine = nextSegNum;
+        // If this segment ENDS WITH a FOR, the FOR's body starts at nextSegNum.
+        // We need to override the FOR's _for_restart to nextSegNum (which is next segment).
+        if(seg.endsWithFor) ctx._forRestartOverride = nextSegNum;
+        else ctx._forRestartOverride = null;
+        switchLines.push('        case '+segLineNum+':');
+        if(hasResNext)switchLines.push('          _resumeNext='+(nextLineOf[num]||num)+';');
+        var inner=[];seg.stmts.forEach(function(s){inner.push.apply(inner,convStmtJS(s,'          ',ctx));});
+        if(!inner.length)inner.push('          // pass');
+        inner.forEach(function(l){switchLines.push(l);});
+        var segLastRaw=seg.stmts[seg.stmts.length-1].trim().toUpperCase();
+        var segIsJump=(/^(GOTO|GOSUB|RETURN|RESUME|END|STOP)\b/.test(segLastRaw)||/^ON\s+(?!ERROR)/.test(segLastRaw));
+        if(!segIsJump){
+          if(nextSegNum!==null)switchLines.push('          _line='+nextSegNum+';');
+          else switchLines.push('          _running=false;');
+        }
+        switchLines.push('          break;');
+      });
+    }
+  }
+  // Replace __FORBODY_vk_ATLINE_N__ placeholders with the line number after the FOR line
+  switchLines=switchLines.map(function(l){
+    return l.replace(/__FORBODY_([a-z0-9_]+)_ATLINE_(\d+)__/g,function(_,vk,forLine){
+      var forIdx=_lmap_arr[parseInt(forLine)];
+      var bodyNum=forIdx!==undefined&&forIdx+1<numbered.length?numbered[forIdx+1].num:parseInt(forLine);
+      return String(bodyNum);
+    });
+  });
+
+  var firstLine=numbered[0].num;
+  var dataInit=hasData?'var _data=['+dataLit.join(', ')+'];\nvar _dp=0;':'';
+  var warnComment=warnings.length?'\n<!-- Conversion notes:\n'+warnings.map(function(w){return '  '+w;}).join('\n')+'\n-->':'';
+
+  var H=[
+    '<!DOCTYPE html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
+    '<title>BASIC Program<\/title>',
+    '<style>',
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    'body{background:#000;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:20px;font-family:monospace;}',
+    '#screen{background:#000;border:2px solid #1a4a1a;box-shadow:0 0 20px #33ff3355;position:relative;width:100%;max-width:720px;margin:0 auto;overflow:auto;-webkit-overflow-scrolling:touch;cursor:text;}',
+    '#terminal{display:block;padding:8px 4px;font-family:"Courier New",Consolas,ui-monospace,monospace;font-size:clamp(7px,calc(100vw/52),14px);line-height:1.2;color:#5aff5a;text-shadow:0 0 3px #33ff33;white-space:pre;box-sizing:border-box;min-height:50vh;max-height:70vh;}',
+    '#terminal .cursor{background:#5aff5a;color:#000;animation:blink 1s step-end infinite;}',
+    '@keyframes blink{50%{opacity:0;}}',
+    '#terminal.inverse{background:#33ff33;color:#000;}',
+    '#terminal.flash{animation:flash .5s step-end infinite;}',
+    '@keyframes flash{50%{opacity:.3;}}',
+    '#gfxCanvas{display:none;width:100%;height:auto;max-width:100%;image-rendering:pixelated;vertical-align:top;}',
+    '#hiddenKb{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;}',
+    
+    
+    
+    '#runBtn{margin:12px auto;display:block;font-family:"Courier New",monospace;font-size:14px;padding:10px 24px;background:transparent;border:1px solid #5aff5a;color:#5aff5a;cursor:pointer;letter-spacing:2px;border-radius:4px;}',
+    '#runBtn:hover{background:rgba(51,255,51,.1);}',
+    '#statusBar{color:#33aa33;font-family:monospace;font-size:12px;margin-top:10px;letter-spacing:2px;text-align:center;}',
+    '#gameControls{display:flex;justify-content:space-between;max-width:720px;margin:12px auto;padding:0 10px;gap:20px;align-items:center;flex-wrap:wrap;}',
+    '#dpad{display:grid;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(3,60px);gap:4px;flex-shrink:0;}',
+    '#dpad .gc-btn{background:#001500;color:#5aff5a;border:2px solid #33ff33;font-size:24px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0;}',
+    '#dpad .gc-nw{grid-column:1;grid-row:1;}',
+    '#dpad .gc-up{grid-column:2;grid-row:1;}',
+    '#dpad .gc-ne{grid-column:3;grid-row:1;}',
+    '#dpad .gc-left{grid-column:1;grid-row:2;}',
+    '#dpad .gc-right{grid-column:3;grid-row:2;}',
+    '#dpad .gc-sw{grid-column:1;grid-row:3;}',
+    '#dpad .gc-down{grid-column:2;grid-row:3;}',
+    '#dpad .gc-se{grid-column:3;grid-row:3;}',
+    '#dpad .gc-btn:active,#actBtns .gc-btn:active{background:#33ff33;color:#000;}',
+    '#dpad .gc-btn.diag{background:#001200;font-size:20px;color:#33dd33;}',
+    '#actBtns{display:flex;gap:12px;flex-direction:column;}',
+    '#actBtns .gc-btn{min-width:80px;min-height:60px;background:#001500;color:#5aff5a;border:2px solid #33ff33;font-size:14px;padding:10px 16px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;border-radius:8px;letter-spacing:1px;}',
+    '@media (pointer:fine) and (hover:hover){#gameControls.hide-on-desktop{display:none;}}',
+    '<\/style>',
+    '<\/head>',
+    '<body>',
+    '<div id="screen" onclick="_hiddenKb.focus()">',
+    '  <canvas id="gfxCanvas"><\/canvas>',
+    '  <div id="terminal"><\/div>',
+    '<\/div>',
+    '<input id="hiddenKb" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" \/>',
+    '<button id="runBtn" onclick="startProgram()">&#9654; RUN PROGRAM<\/button>',
+    '<div id="statusBar">READY<\/div>',
+    (hasArrowKeys||hasStick?'<div id="gameControls">':'<div id="gameControls" style="display:none">'),
+    '  <div id="dpad">',
+    '    <button class="gc-btn gc-nw" data-key="NW">&#8598;<\/button>',
+    '    <button class="gc-btn gc-up" data-key="ArrowUp">&uarr;<\/button>',
+    '    <button class="gc-btn gc-ne" data-key="NE">&#8599;<\/button>',
+    '    <button class="gc-btn gc-left" data-key="ArrowLeft">&larr;<\/button>',
+    '    <button class="gc-btn gc-right" data-key="ArrowRight">&rarr;<\/button>',
+    '    <button class="gc-btn gc-sw" data-key="SW">&#8601;<\/button>',
+    '    <button class="gc-btn gc-down" data-key="ArrowDown">&darr;<\/button>',
+    '    <button class="gc-btn gc-se" data-key="SE">&#8600;<\/button>',
+    '  <\/div>',
+    '  <div id="actBtns">',
+    '    <button class="gc-btn gc-act" data-key="Enter">&#9166;<\/button>',
+    '    <button class="gc-btn gc-act" data-key=" ">SPACE<\/button>',
+    '  <\/div>',
+    '<\/div>',
+    '<script>',
+    'var _term=document.getElementById("terminal");',
+    'var _canvas=document.getElementById("gfxCanvas");',
+    'var _ctx2d=_canvas.getContext("2d");',
+    'var _status=document.getElementById("statusBar");',
+    'var _termRows=25,_termCols=80,_termGrid=[],_termRow=0,_termCol=0,_grMode=null,_grLoColor=0,_grHiColor=3,_grCx=0,_grCy=0,_grScale=1,_grRot=0;',
+    'for(var _ti=0;_ti<_termRows;_ti++)_termGrid.push(new Array(_termCols).fill(" "));',
+    'var _LO_PAL=["#000000","#8C2020","#442098","#CC28B8","#006840","#808080","#229CF0","#88C0FF","#885000","#F07800","#808080","#FFA898","#10F010","#F0F018","#48D8C8","#FFFFFF"];',
+    'var _HI_PAL=["#000000","#00FF00","#FF00FF","#FFFFFF","#000000","#FF6600","#0066FF","#FFFFFF"];',
+    'var _SHAPE_DX=[0,1,1,1,0,-1,-1,-1], _SHAPE_DY=[-1,-1,0,1,1,1,0,-1];',
+    'var _line='+firstLine+',_ret=[],_onerr=null,_resumeNext=0,_errResumeLine=0,_trace=false,_running=false,_mem={};',
+    dataInit,
+    'var _kbLast=0,_kbQueue=[];',
+    'document.addEventListener("keydown",function(e){var k=e.key;var c=0;if(k.length===1){c=k.charCodeAt(0);_kbLast=c|0x80;_kbQueue.push(_kbLast);_inkeyCached=k;}else if(k==="ArrowUp"){_inkeyCached=String.fromCharCode(0)+String.fromCharCode(72);_joyY=0;_kbLast=139;_kbQueue.push(139);}else if(k==="ArrowDown"){_inkeyCached=String.fromCharCode(0)+String.fromCharCode(80);_joyY=255;_kbLast=138;_kbQueue.push(138);}else if(k==="ArrowLeft"){_inkeyCached=String.fromCharCode(0)+String.fromCharCode(75);_joyX=0;_kbLast=136;_kbQueue.push(136);}else if(k==="ArrowRight"){_inkeyCached=String.fromCharCode(0)+String.fromCharCode(77);_joyX=255;_kbLast=149;_kbQueue.push(149);}else if(k==="Enter"){_inkeyCached=String.fromCharCode(13);_kbLast=141;_kbQueue.push(141);}else if(k==="Escape"){_inkeyCached=String.fromCharCode(27);_kbLast=155;_kbQueue.push(155);}});',
+    'document.addEventListener("keyup",function(e){var k=e.key;if(k==="ArrowUp"||k==="ArrowDown"){_joyY=127;}else if(k==="ArrowLeft"||k==="ArrowRight"){_joyX=127;}});',
+    'function _kbPeek(){if(_kbQueue.length){_kbLast=_kbQueue[0];return _kbLast;}return _kbLast;}',
+    'var _joyX=127,_joyY=127,_joyBtn=[false,false,false,false];',
+    'function _stick(n){switch(n|0){case 0:return _joyX;case 1:return _joyY;case 2:return _joyX;case 3:return _joyY;default:return 127;}}',
+    'function _strig(n){return _joyBtn[n|0]?-1:0;}',
+    'function _pdl(n){return (n|0)===0?_joyX:_joyY;}',
+    'function _kbClear(){_kbLast=0;_kbQueue=[];return 0;}',
+    'var _audioCtx=null;',
+    'function _speakerClick(){try{if(!_audioCtx)_audioCtx=new(window.AudioContext||window.webkitAudioContext)();var o=_audioCtx.createOscillator();var g=_audioCtx.createGain();o.connect(g);g.connect(_audioCtx.destination);o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,_audioCtx.currentTime+0.02);o.stop(_audioCtx.currentTime+0.02);}catch(e){}}',
+    'var _dosFiles={},_dosHandle=null,_dosMode="r",_dosReadLines=[],_dosReadPos=0;',
+    'function _dosOpen(fname,mode){_dosHandle=fname;_dosMode=mode;if(mode==="r"){var content=_dosFiles[fname]||localStorage.getItem("dos_"+fname)||"";_dosReadLines=content.split("\\n");_dosReadPos=0;}else if(mode==="w"){_dosFiles[fname]="";_dosReadLines=[];_dosReadPos=0;}else if(mode==="a"){_dosFiles[fname]=_dosFiles[fname]||localStorage.getItem("dos_"+fname)||"";}}',
+    'function _dosClose(){if(_dosHandle&&_dosMode!=="r"){localStorage.setItem("dos_"+_dosHandle,_dosFiles[_dosHandle]||"");}  _dosHandle=null;}',
+    'function _dosSetRead(){_dosMode="r";}',
+    'function _dosDelete(fname){delete _dosFiles[fname];localStorage.removeItem("dos_"+fname);}',
+    'function _dosReadLine(){if(_dosReadPos<_dosReadLines.length)return _dosReadLines[_dosReadPos++];return "";}',
+    'function _dosPrint(val){if(_dosHandle&&_dosMode!=="r")_dosFiles[_dosHandle]+=String(val)+"\\n";else _print(String(val));}',
+    'var _inkeyCached="";',
+    
+    'function _strRep(n,c){c=typeof c==="number"?_chrS(c):String(c)[0];return c.repeat(Math.trunc(n));}',
+    'function _dimArr(n){var a=new Array(n).fill(0);return new Proxy(a,{get:function(t,k){if(typeof k==="string"&&/^\\d+$/.test(k)){var i=parseInt(k);if(i>=n)throw new Error("BAD SUBSCRIPT");}return t[k];},set:function(t,k,v){if(typeof k==="string"&&/^\\d+$/.test(k)){var i=parseInt(k);if(i>=n)throw new Error("BAD SUBSCRIPT");}t[k]=v;return true;}});}',
+    'function _dimArr2(r,c){var a=[];for(var i=0;i<r;i++)a.push(_dimArr(c));return _dimArr(r)&&new Proxy(a,{get:function(t,k){if(typeof k==="string"&&/^\\d+$/.test(k)){var i=parseInt(k);if(i>=r)throw new Error("BAD SUBSCRIPT");}return t[k];},set:function(t,k,v){if(typeof k==="string"&&/^\\d+$/.test(k)){var i=parseInt(k);if(i>=r)throw new Error("BAD SUBSCRIPT");}t[k]=v;return true;}});}',
+    'function _dimArr3(r,c,d){var a=[];for(var i=0;i<r;i++)a.push(_dimArr2(c,d));return new Proxy(a,{get:function(t,k){if(typeof k==="string"&&/^\\d+$/.test(k)){var i=parseInt(k);if(i>=r)throw new Error("BAD SUBSCRIPT");}return t[k];},set:function(t,k,v){if(typeof k==="string"&&/^\\d+$/.test(k)){var i=parseInt(k);if(i>=r)throw new Error("BAD SUBSCRIPT");}t[k]=v;return true;}});}',
+    'function _gwInput(n){return new Promise(function(resolve){if(n===1){_hiddenKb.value="";_hiddenKb.focus();var resolved=false;var blinkTimer=setInterval(function(){_renderTerm(true,_termRow,_termCol);},500);_renderTerm(true,_termRow,_termCol);function finish(ch){if(resolved)return;resolved=true;document.removeEventListener("keydown",onKey);_hiddenKb.removeEventListener("input",onInput);clearInterval(blinkTimer);_renderTerm();_inkeyCached="";resolve(ch);}function onKey(e){if(e.key.length===1){e.preventDefault();finish(e.key);}else if(e.key==="Enter"){e.preventDefault();finish("\\r");}}function onInput(e){var v=_hiddenKb.value;if(v.length>0){finish(v.charAt(0));}}document.addEventListener("keydown",onKey);_hiddenKb.addEventListener("input",onInput);}else{_input("").then(function(v){resolve(v.slice(0,n));});}});}',
+    'function _renderTerm(showCursor,curRow,curCol){',
+    '  var html="";',
+    '  for(var ri=0;ri<_termRows;ri++){',
+    '    var row=_termGrid[ri];',
+    '    for(var ci=0;ci<_termCols;ci++){',
+    '      var ch=row[ci];',
+    '      if(showCursor&&ri===curRow&&ci===curCol){',
+    '        html+="<span class=\\"cursor\\">"+(ch===" "?"\\u00a0":_escHtml(ch))+"</span>";',
+    '      } else {',
+    '        html+=_escHtml(ch);',
+    '      }',
+    '    }',
+    '    html+="\\n";',
+    '  }',
+    '  _term.innerHTML=html.replace(/(?:[ \\u00a0]*\\n)+$/,"");',
+    '}',
+    'function _escHtml(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":c;}',
+    'function _print(s){_writeTermStr(String(s));_termRow++;_termCol=0;if(_termRow>=_termRows){_termScroll();_termRow=_termRows-1;}_renderTerm();}',
+    'function _printNoNL(s){_writeTermStr(String(s));_renderTerm();}',
+    'function _writeTermStr(s){for(var _wi=0;_wi<s.length;_wi++){var _wc=s.charAt(_wi);if(_wc==="\\x01"&&_wi+1<s.length){var _targetCol=s.charCodeAt(_wi+1)-32-1;_wi++;if(_targetCol<_termCol){_termRow++;_termCol=0;if(_termRow>=_termRows){_termScroll();_termRow=_termRows-1;}}while(_termCol<_targetCol&&_termCol<_termCols){_termGrid[_termRow][_termCol]=" ";_termCol++;}continue;}if(_wc==="\\n"){_termRow++;_termCol=0;if(_termRow>=_termRows){_termScroll();_termRow=_termRows-1;}continue;}if(_wc==="\\r"){_termCol=0;continue;}if(_termCol>=_termCols){_termRow++;_termCol=0;if(_termRow>=_termRows){_termScroll();_termRow=_termRows-1;}}if(_termRow>=_termRows){_termScroll();_termRow=_termRows-1;}_termGrid[_termRow][_termCol]=_wc;_termCol++;}}',
+    'function _termScroll(){_termGrid.shift();_termGrid.push(new Array(_termCols).fill(" "));}',
+    'function _printTab(s){_writeTermStr(String(s));_termCol=Math.floor((_termCol+14)/14)*14;if(_termCol>=_termCols){_termCol=0;_termRow++;if(_termRow>=_termRows){_termScroll();_termRow=_termRows-1;}}_renderTerm();}',
+    'function _home(){for(var _ri=0;_ri<_termRows;_ri++)for(var _ci=0;_ci<_termCols;_ci++)_termGrid[_ri][_ci]=" ";_termRow=0;_termCol=0;_renderTerm();}',
+    'function _inverse(){_term.classList.add("inverse");}',
+    'function _normal(){_term.classList.remove("inverse","flash");}',
+    'function _flash(){_term.classList.add("flash");}',
+    'function _vtab(n){_termRow=Math.max(0,Math.trunc(n)-1);if(_termRow>=_termRows)_termRow=_termRows-1;_renderTerm();}',
+    'function _htab(n){_termCol=Math.max(0,Math.trunc(n)-1);if(_termCol>=_termCols)_termCol=_termCols-1;_renderTerm();}',
+    'function _locate(row,col){if(row!==null&&row!==undefined)_termRow=Math.max(0,Math.trunc(row)-1);if(col!==null&&col!==undefined)_termCol=Math.max(0,Math.trunc(col)-1);if(_termRow>=_termRows)_termRow=_termRows-1;if(_termCol>=_termCols)_termCol=_termCols-1;_renderTerm();}',
+    'var _gwCx=0,_gwCy=0;',
+    'var _GW_COLORS=["#000000","#0000AA","#00AA00","#00AAAA","#AA0000","#AA00AA","#AA5500","#AAAAAA","#555555","#5555FF","#55FF55","#55FFFF","#FF5555","#FF55FF","#FFFF55","#FFFFFF"];',
+    'function _gwLine(x1,y1,x2,y2,color,filled){if(_grMode===null){_grInit("hi");}var col=color!==null?_GW_COLORS[Math.trunc(color)%16]:"#FFFFFF";if(filled){_ctx2d.fillStyle=col;_ctx2d.fillRect(Math.min(x1,x2)*2,Math.min(y1,y2)*2,Math.abs(x2-x1)*2,Math.abs(y2-y1)*2);}else{_ctx2d.strokeStyle=col;_ctx2d.lineWidth=1;_ctx2d.beginPath();_ctx2d.moveTo(x1*2,y1*2);_ctx2d.lineTo(x2*2,y2*2);_ctx2d.stroke();}  _gwCx=Math.trunc(x2);_gwCy=Math.trunc(y2);}',
+    'function _gwPset(x,y,color){_gwLine(x,y,x,y,color,false);_gwCx=Math.trunc(x);_gwCy=Math.trunc(y);}',
+    'var _hiddenKb=document.getElementById("hiddenKb");',
+    'document.addEventListener("click",function(e){if(_running&&!e.target.classList.contains("gc-btn"))_hiddenKb.focus();});',
+    '// Wire up on-screen game buttons to dispatch keydown events',
+    '(function(){',
+    '  var btns=document.querySelectorAll(".gc-btn");',
+    '  // Map diagonal keys to X+Y axis components',
+    '  function setAxis(k,pressed){',
+    '    if(k==="ArrowUp"){_joyY=pressed?0:127;}',
+    '    else if(k==="ArrowDown"){_joyY=pressed?255:127;}',
+    '    else if(k==="ArrowLeft"){_joyX=pressed?0:127;}',
+    '    else if(k==="ArrowRight"){_joyX=pressed?255:127;}',
+    '    else if(k==="NW"){_joyY=pressed?0:127;_joyX=pressed?0:127;}',
+    '    else if(k==="NE"){_joyY=pressed?0:127;_joyX=pressed?255:127;}',
+    '    else if(k==="SW"){_joyY=pressed?255:127;_joyX=pressed?0:127;}',
+    '    else if(k==="SE"){_joyY=pressed?255:127;_joyX=pressed?255:127;}',
+    '    else if(k==="Act1"){_joyBtn[0]=pressed;}',
+    '    else if(k==="Act2"){_joyBtn[1]=pressed;}',
+    '  }',
+    '  function fireKey(k){',
+    '    // For INKEY$ / PC-BASIC scancode emulation, diagonals fire two keys in sequence',
+    '    var keys=[];',
+    '    if(k==="NW"){keys=["ArrowUp","ArrowLeft"];}',
+    '    else if(k==="NE"){keys=["ArrowUp","ArrowRight"];}',
+    '    else if(k==="SW"){keys=["ArrowDown","ArrowLeft"];}',
+    '    else if(k==="SE"){keys=["ArrowDown","ArrowRight"];}',
+    '    else if(k==="Act1"){keys=["Enter"];}',
+    '    else if(k==="Act2"){keys=[" "];}',
+    '    else {keys=[k];}',
+    '    keys.forEach(function(realK,i){',
+    '      var kc=0;',
+    '      if(realK==="ArrowUp"){kc=38;}',
+    '      else if(realK==="ArrowDown"){kc=40;}',
+    '      else if(realK==="ArrowLeft"){kc=37;}',
+    '      else if(realK==="ArrowRight"){kc=39;}',
+    '      else if(realK==="Enter"){kc=13;}',
+    '      else if(realK===" "){kc=32;}',
+    '      else if(realK.length===1){kc=realK.charCodeAt(0);}',
+    '      // Stagger diagonal keys by a tick so both register but as separate events',
+    '      setTimeout(function(){',
+    '        var ev=new KeyboardEvent("keydown",{key:realK,code:realK,keyCode:kc,which:kc,bubbles:true});',
+    '        document.dispatchEvent(ev);',
+    '      },i*8);',
+    '    });',
+    '  }',
+    '  function press(k,pressed){',
+    '    setAxis(k,pressed);',
+    '    if(pressed)fireKey(k);',
+    '  }',
+    '  btns.forEach(function(b){',
+    '    var k=b.getAttribute("data-key");',
+    '    function down(e){e.preventDefault();press(k,true);}',
+    '    function up(e){e.preventDefault();press(k,false);}',
+    '    b.addEventListener("touchstart",down,{passive:false});',
+    '    b.addEventListener("touchend",up,{passive:false});',
+    '    b.addEventListener("touchcancel",up,{passive:false});',
+    '    b.addEventListener("mousedown",down);',
+    '    b.addEventListener("mouseup",up);',
+    '    b.addEventListener("mouseleave",up);',
+    '  });',
+    '})();',
+    'function _input(prompt){return new Promise(function(resolve){if(prompt)_printNoNL(prompt);var startRow=_termRow,startCol=_termCol,buf="",cursorPos=0;_hiddenKb.value="";_hiddenKb.focus();var blinkTimer=setInterval(function(){_renderTerm(true,_termRow,_termCol);},500);_renderTerm(true,_termRow,_termCol);function writeBuf(){for(var i=0;i<buf.length;i++){var r=startRow,c=startCol+i;while(c>=_termCols){c-=_termCols;r++;}if(r<_termRows)_termGrid[r][c]=buf.charAt(i);}for(var i=buf.length;i<_termCols*2;i++){var r=startRow,c=startCol+i;while(c>=_termCols){c-=_termCols;r++;}if(r<_termRows)_termGrid[r][c]=" ";else break;}var newC=startCol+buf.length,newR=startRow;while(newC>=_termCols){newC-=_termCols;newR++;}if(newR>=_termRows)newR=_termRows-1;_termRow=newR;_termCol=newC;}function onKey(e){if(e.key==="Enter"){e.preventDefault();document.removeEventListener("keydown",onKey);_hiddenKb.removeEventListener("input",onInput);clearInterval(blinkTimer);var finalBuf=buf;buf="";writeBuf();_termRow=startRow+1;_termCol=0;if(_termRow>=_termRows){_termScroll();_termRow=_termRows-1;}_renderTerm();resolve(finalBuf);}else if(e.key==="Backspace"){e.preventDefault();if(buf.length>0){buf=buf.slice(0,-1);writeBuf();_renderTerm(true,_termRow,_termCol);}}else if(e.key.length===1){e.preventDefault();buf+=e.key;writeBuf();_renderTerm(true,_termRow,_termCol);}}function onInput(e){var v=_hiddenKb.value;if(v.length>buf.length){buf=v;writeBuf();_renderTerm(true,_termRow,_termCol);}else if(v.length<buf.length){buf=v;writeBuf();_renderTerm(true,_termRow,_termCol);}}document.addEventListener("keydown",onKey);_hiddenKb.addEventListener("input",onInput);});}',
+    'function _get(){return new Promise(function(resolve){function onKey(e){document.removeEventListener("keydown",onKey);_inkeyCached="";resolve(e.key.length===1?e.key:"");}  document.addEventListener("keydown",onKey);});}',
+    'function _sgn(x){return x>0?1:(x<0?-1:0);}',
+    'var _rndLast=0;',
+    'function _rnd(x){if(x>0){_rndLast=Math.random();return _rndLast;}if(x===0)return _rndLast;_rndLast=Math.random();return _rndLast;}',
+    'function _len(s){return String(s).length;}',
+    'function _midS(s,st,n){s=String(s);var i=Math.trunc(st)-1;return n===undefined?s.slice(i):s.slice(i,i+Math.trunc(n));}',
+    'function _leftS(s,n){return String(s).slice(0,Math.trunc(n));}',
+    'function _rightS(s,n){var ss=String(s),nn=Math.trunc(n);return nn?ss.slice(-nn):"";}',
+    'function _chrS(x){return String.fromCharCode(Math.trunc(x));}',
+    'function _asc(s){return String(s).charCodeAt(0);}',
+    'function _spc(n){var s="";for(var i=0;i<Math.max(0,Math.trunc(n));i++)s+=" ";return s;}',
+    'function _tab(n){return "\\x01"+String.fromCharCode(Math.max(0,Math.trunc(n))+32);}',
+    'function _fre(x){return 35000;}',
+    'function _usr(x){return 0;}',
+    'function _peek(a){return _mem[Math.trunc(a)]||0;}',
+    'function _poke(a,v){_mem[Math.trunc(a)]=Math.trunc(v)&0xFF;}',
+    'function _scrn(x,y){return 0;}',
+    'function _pdl(n){return 127;}',
+    'function _callUsr(addr){if(addr===-936||addr===62464){_home();try{_grText();}catch(e){}  return;}if(addr===62450){try{_grText();}catch(e){}  return;}if(addr===54915){_grInit("lo");return;}if(addr===57350||addr===57352){_grInit("hi");return;}if(addr===62454){_grInit("hi2");return;}if(addr===-868||addr===64668){return;}}',
+    'function _end(){_running=false;_status.textContent="PROGRAM ENDED";}',
+    'function _stop(line){_running=false;_print("\\nBREAK IN "+line);_status.textContent="STOPPED AT LINE "+line;}',
+    'function _grInit(mode){_grMode=mode;_canvas.style.display="block";_term.style.display="block";_term.style.minHeight="4em";_term.style.maxHeight="8em";if(mode==="lo"){_canvas.width=480;_canvas.height=480;}else{_canvas.width=560;_canvas.height=384;}  _ctx2d.fillStyle="#000";_ctx2d.fillRect(0,0,_canvas.width,_canvas.height);}',
+    'function _grText(){_canvas.style.display="none";_term.style.display="block";_term.style.minHeight="50vh";_term.style.maxHeight="70vh";}',
+    'function _grColor(n){_grLoColor=n%16;}',
+    'function _grHcolor(n){_grHiColor=n%8;}',
+    'function _grPlot(x,y){_ctx2d.fillStyle=_LO_PAL[_grLoColor];_ctx2d.fillRect(x*12,y*12,12,12);}',
+    'function _grVlin(y1,y2,x){_ctx2d.fillStyle=_LO_PAL[_grLoColor];for(var y=Math.min(y1,y2);y<=Math.max(y1,y2);y++)_ctx2d.fillRect(x*12,y*12,12,12);}',
+    'function _grHlin(x1,x2,y){_ctx2d.fillStyle=_LO_PAL[_grLoColor];for(var x=Math.min(x1,x2);x<=Math.max(x1,x2);x++)_ctx2d.fillRect(x*12,y*12,12,12);}',
+    'function _grHmove(x,y){_ctx2d.fillStyle=_HI_PAL[_grHiColor];_ctx2d.fillRect(x*2,y*2,2,2);_grCx=x;_grCy=y;}',
+    'function _grHlineTo(x2,y2){_ctx2d.strokeStyle=_HI_PAL[_grHiColor];_ctx2d.lineWidth=1;_ctx2d.beginPath();_ctx2d.moveTo(_grCx*2,_grCy*2);_ctx2d.lineTo(x2*2,y2*2);_ctx2d.stroke();_grCx=x2;_grCy=y2;}',
+    'function _grDrawShape(idx,cx,cy,xorMode,scale,rot){var base=(_mem[232]||0)+(_mem[233]||0)*256;if(base===0)base=768;var offLo=_mem[base+idx*2-1]||0,offHi=_mem[base+idx*2]||0;var saddr=(offLo+offHi>0)?base+offLo+offHi*256:base+idx*10;var x=cx,y=cy,s=Math.max(1,scale);for(var i=0;i<128;i++){var b=_mem[saddr+i]||0;if(b===0)break;var d1=b&7,plot1=(b&64)!==0;x+=_SHAPE_DX[d1]*s;y+=_SHAPE_DY[d1]*s;if(plot1){var col=xorMode?"#000000":_HI_PAL[_grHiColor];_ctx2d.fillStyle=col;_ctx2d.fillRect(Math.trunc(x)*2,Math.trunc(y)*2,2,2);}  var d2=(b>>3)&7;if(d2!==0){var plot2=(b&32)!==0;x+=_SHAPE_DX[d2]*s;y+=_SHAPE_DY[d2]*s;if(plot2){var col2=xorMode?"#000000":_HI_PAL[_grHiColor];_ctx2d.fillStyle=col2;_ctx2d.fillRect(Math.trunc(x)*2,Math.trunc(y)*2,2,2);}}  if((b&128)!==0)break;}}',
+    'async function _runProgram(){',
+    '  _line='+firstLine+';_ret=[];_running=true;_status.textContent="RUNNING...";',
+    '  '+(hasOnerr?'_onerr=null;':'')+(hasData?'_dp=0;':''),
+    '  _inkeyCached="";',
+    '  while(_running){',
+    '    try{',
+    '      await new Promise(function(r){setTimeout(r,0);});',
+    '      if(_trace)_print("["+_line+"]");',
+    '      switch(_line){',
+    switchLines.join('\n'),
+    '        default:_running=false;break;',
+    '      }',
+    '    }catch(e){',
+    '      '+(hasOnerr?'if(_onerr!==null){_mem[222]=255;_errResumeLine=_resumeNext;_line=_onerr;continue;}':''),
+    '      _print("?ERROR: "+e.message);_status.textContent="ERROR";_running=false;',
+    '    }',
+    '  }',
+    '  _status.textContent="READY";',
+    '}',
+    'function startProgram(){_home();_grText();_line='+firstLine+';_runProgram();}',
+    '<\/script>',
+    '<\/body>',
+    '<\/html>',
+    warnComment
+  ];
+  return{code:H.join('\n'),warnings:warnings};
+}
+
+// ═══════════════════════════════════════════════════════════
+// ALTERNATIVE DIALECT CONVERTERS
+// ═══════════════════════════════════════════════════════════
+function convertAltToPython(code, dialect) {
+  code = preprocessSource(code);
+  // Pre-process dialect-specific syntax to Applesoft equivalents
+  var lines=code.split('\n');
+  var converted=lines.map(function(line){
+    var m=line.match(/^(\s*\d+\s*)(.*)/);
+    if(!m)return line;
+    var num=m[1],stmt=m[2];
+    if(dialect==='gw'){
+      stmt=stmt.replace(/\bCLS\b/gi,'HOME');
+      stmt=stmt.replace(/\bINKEY\$/gi,'INKEY$');
+    }
+    if(dialect==='c64'){
+      stmt=stmt.replace(/PRINT\s*CHR\$\s*\(\s*147\s*\)/gi,'HOME');
+    }
+    if(dialect==='bbc'){
+      stmt=stmt.replace(/^CLS\b/i,'HOME');
+    }
+    return num+stmt;
+  });
+  var result=convertToPython(converted.join('\n'));
+  result.warnings.unshift('Dialect: '+dialect.toUpperCase()+' BASIC');
+  return result;
+}
+
+function convertAltToHTML(code, dialect) {
+  code = preprocessSource(code);
+  var lines=code.split('\n');
+  var converted=lines.map(function(line){
+    var m=line.match(/^(\s*\d+\s*)(.*)/);
+    if(!m)return line;
+    var num=m[1],stmt=m[2];
+    if(dialect==='gw'){
+      stmt=stmt.replace(/\bCLS\b/gi,'HOME');
+    }
+    if(dialect==='c64'){
+      stmt=stmt.replace(/PRINT\s*CHR\$\s*\(\s*147\s*\)/gi,'HOME');
+    }
+    return num+stmt;
+  });
+  var result=convertToHTML(converted.join('\n'));
+  result.warnings.unshift('Dialect: '+dialect.toUpperCase()+' BASIC');
+  return result;
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// STARTUP
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  buildExamples();
+  updateStatus();
+});
+</script>
+</body>
+</html>
